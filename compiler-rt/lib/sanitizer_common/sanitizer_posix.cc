@@ -338,6 +338,9 @@ bool ShouldMockFailureToOpen(const char *path) {
 }
 
 #if SANITIZER_LINUX && !SANITIZER_ANDROID && !SANITIZER_GO
+# ifndef O_CLOEXEC
+#  define O_CLOEXEC 0
+# endif
 int GetNamedMappingFd(const char *name, uptr size, int *flags) {
   if (!common_flags()->decorate_proc_maps || !name)
     return -1;

@@ -49,6 +49,9 @@ retryingReadSome(int Fd, char *Begin, char *End) XRAY_NEVER_INSTRUMENT {
   return std::make_pair(TotalBytesRead, true);
 }
 
+#ifndef O_CLOEXEC
+# define O_CLOEXEC 0
+#endif
 static bool readValueFromFile(const char *Filename,
                               long long *Value) XRAY_NEVER_INSTRUMENT {
   int Fd = open(Filename, O_RDONLY | O_CLOEXEC);
