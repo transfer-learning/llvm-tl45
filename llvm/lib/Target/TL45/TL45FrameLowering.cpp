@@ -87,7 +87,7 @@ void TL45FrameLowering::adjustReg(MachineBasicBlock &MBB,
   if (DestReg == SrcReg && Val == 0)
     return;
 
-  if (isInt<20>(Val)) {
+  if (isInt<16>(Val)) {
     BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI), DestReg)
             .addReg(SrcReg)
             .addImm(Val)
@@ -131,7 +131,7 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
   // investigation. Get the number of bytes to allocate from the FrameInfo.
   uint64_t StackSize = MFI.getStackSize();
 
-  if (hasFramePointer) StackSize++;
+  if (hasFramePointer) StackSize += 4;
 
   // Early exit if there is no need to allocate on the stack
   if (StackSize == 0 && !MFI.adjustsStack())
@@ -168,8 +168,9 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
 
   // Generate new FP.
   if (hasFramePointer) {
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(StackSize - 1);
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::ADD)).addReg(TL45::bp).addReg(TL45::sp).addReg(TL45::r0);
+    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(StackSize - 4);
+    BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI)).addReg(TL45::bp).addReg(TL45::sp)
+    .addImm(StackSize - 4).setMIFlag(MachineInstr::FrameSetup);
 
 //    adjustReg(MBB, MBBI, DL, FPReg, SPReg,
 //              StackSize - RVFI->getVarArgsSaveSize(), MachineInstr::FrameSetup);
@@ -219,7 +220,7 @@ void TL45FrameLowering::emitEpilogue(MachineFunction &MF,
 
   uint64_t StackSize = MFI.getStackSize();
 
-  if (hasFramePointer) StackSize++;
+  if (hasFramePointer) StackSize += 4;
 
   uint64_t FPOffset = StackSize;// - RVFI->getVarArgsSaveSize();
 
@@ -231,27 +232,10 @@ void TL45FrameLowering::emitEpilogue(MachineFunction &MF,
 //    adjustReg(MBB, LastFrameDestroy, DL, SPReg, FPReg, -FPOffset,
 //              MachineInstr::FrameDestroy);
 
-    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::ADD)).addReg(TL45::sp).addReg(TL45::bp).addReg(TL45::r0);
+    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::ADDI)).addReg(TL45::sp).addReg(TL45::bp).addImm(-(StackSize - 4));
   }
 
   if (hasFramePointer) {
-    // To find the instruction restoring FP from stack.
-//    for (auto &I = LastFrameDestroy; I != MBBI; ++I) {
-//      if (I->mayLoad() && I->getOperand(0).isReg()) {
-//        Register DestReg = I->getOperand(0).getReg();
-//        if (DestReg == FPReg) {
-//          // If there is frame pointer, after restoring $fp registers, we
-//          // need adjust CFA to ($sp - FPOffset).
-//          // Emit ".cfi_def_cfa $sp, -FPOffset"
-//          unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfa(
-//                  nullptr, RI->getDwarfRegNum(SPReg, true), -FPOffset));
-//          BuildMI(MBB, std::next(I), DL,
-//                  TII->get(TargetOpcode::CFI_INSTRUCTION))
-//                  .addCFIIndex(CFIIndex);
-//          break;
-//        }
-//      }
-//    }
 
     // BP is a linked list!!!
     BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::LW)).addReg(TL45::bp).addReg(TL45::bp).addImm(0);
@@ -273,6 +257,7 @@ void TL45FrameLowering::emitEpilogue(MachineFunction &MF,
   // Deallocate stack
   adjustReg(MBB, MBBI, DL, SPReg, SPReg, StackSize, MachineInstr::FrameDestroy);
 
+
   // After restoring $sp, we need to adjust CFA to $(sp + 0)
   // Emit ".cfi_def_cfa_offset 0"
   unsigned CFIIndex =
@@ -291,9 +276,23 @@ bool TL45FrameLowering::hasFP(const MachineFunction &MF) const {
 }
 
 int TL45FrameLowering::getFrameIndexReference(const MachineFunction &MF, int FI, unsigned &FrameReg) const {
-  int offset = TargetFrameLowering::getFrameIndexReference(MF, FI, FrameReg);
-  assert(offset % 4 == 0 && "4-byte addressibility");
-  return offset / 4;
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *RI = MF.getSubtarget().getRegisterInfo();
+
+  int Offset = MFI.getObjectOffset(FI) - getOffsetOfLocalArea() +
+               MFI.getOffsetAdjustment();
+
+
+  FrameReg = RI->getFrameRegister(MF);
+  if (hasFP(MF))
+    Offset += 0;
+  else
+    Offset += MF.getFrameInfo().getStackSize();
+
+  return Offset;
+//  int offset = TargetFrameLowering::getFrameIndexReference(MF, FI, FrameReg);
+//  assert(offset % 4 == 0 && "4-byte addressibility");
+//  return offset / 4;
 }
 
 

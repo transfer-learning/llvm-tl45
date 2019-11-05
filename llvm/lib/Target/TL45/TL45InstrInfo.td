@@ -59,6 +59,8 @@ def tl45_cmp_jmp       : SDNode<"TL45ISD::CMP_JMP", SDT_TL45CmpJmp, [SDNPHasChai
 def tl45_cmpi_jmp       : SDNode<"TL45ISD::CMPI_JMP", SDT_TL45CmpJmp, [SDNPHasChain, SDNPOptInGlue]>;
 
 
+def sub_term        : SDNode<"TL45ISD::SUB_TERM"       , SDTIntBinOp>;
+
 
 //===----------------------------------------------------------------------===//
 // Instructions
@@ -82,6 +84,9 @@ let Defs = [eflags], isAsCheapAsAMove = 1 in {
   // SUB is sometimes used in a conditional branch comparison.
   let isCompare = 1 in
     defm SUB : ALUTypeInstr<0x2, "sub", sub>;
+
+  let isCompare = 1, isTerminator = 1, isCodeGenOnly = 1 in
+    defm SUB_TERM : ALUTypeInstr<0x2, "sub", sub_term>;
 
   // defm MUL : ALUTypeInstr<0x3, "mul", mul>;
 
@@ -128,22 +133,38 @@ let mode = 0b001 in {
     ]>;
 
   let mayLoad = 1 in
-      def LB : RRITypeInstr<0x12, "lb", [
-        (set (i32 GRRegs:$dr), (zextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
-        // (set (i32 GRRegs:$dr), (extloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
-      ]>;
+    def LB : RRITypeInstr<0x12, "lb", [
+      (set (i32 GRRegs:$dr), (zextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
+    ]>;
 
    let mayLoad = 1 in
-         def LBSE : RRITypeInstr<0x0f, "lbse", [
-           (set (i32 GRRegs:$dr), (sextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
-         ]>;
+     def LBSE : RRITypeInstr<0x0f, "lbse", [
+       (set (i32 GRRegs:$dr), (sextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
+     ]>;
 
-    // yes it's backward for SW. MEM[$sr1+imm] = $dr
-    let mayStore = 1 in
-      def SB : RRIStoreTypeInstr<0x13, "sb", [
-        (truncstorei8 i32:$dr, (add (i32 GRRegs:$sr1), TL45imm16:$imm)),
-        (truncstorei8 i32:$dr, (i32 GRRegs:$sr1))
-      ]>;
+  // yes it's backward for SW. MEM[$sr1+imm] = $dr
+  let mayStore = 1 in
+    def SB : RRIStoreTypeInstr<0x13, "sb", [
+      (truncstorei8 i32:$dr, (add (i32 GRRegs:$sr1), TL45imm16:$imm)),
+      (truncstorei8 i32:$dr, (i32 GRRegs:$sr1))
+    ]>;
+
+  let mayLoad = 1 in
+    def LHW : RRITypeInstr<0x10, "lhw", [
+      (set (i32 GRRegs:$dr), (zextloadi16 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
+    ]>;
+
+  let mayLoad = 1 in
+    def LHWSE : RRITypeInstr<0x11, "lhwse", [
+      (set (i32 GRRegs:$dr), (sextloadi16 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
+    ]>;
+
+  // yes it's backward for SW. MEM[$sr1+imm] = $dr
+  let mayStore = 1 in
+    def SHW : RRIStoreTypeInstr<0x16, "shw", [
+      (truncstorei16 i32:$dr, (add (i32 GRRegs:$sr1), TL45imm16:$imm)),
+      (truncstorei16 i32:$dr, (i32 GRRegs:$sr1))
+    ]>;
 }
 
 // multiclass JTypeInstr<bits<5> opcode, string opcodestr>
@@ -188,6 +209,7 @@ let isCall = 1 in
 
 def : Pat<(store GRRegs:$rs2, GRRegs:$rs1), (SW GRRegs:$rs2, GRRegs:$rs1, 0)>;
 def : Pat<(truncstorei8 GRRegs:$rs2, GRRegs:$rs1), (SB GRRegs:$rs2, GRRegs:$rs1, 0)>;
+def : Pat<(truncstorei16 GRRegs:$rs2, GRRegs:$rs1), (SHW GRRegs:$rs2, GRRegs:$rs1, 0)>;
 
 /// Predicates
 
@@ -232,6 +254,11 @@ defm : LdPat<load, LW>;
 defm : LdPat<zextloadi8, LB>;
 defm : LdPat<extloadi8, LB>;
 defm : LdPat<sextloadi8, LBSE>;
+
+defm : LdPat<zextloadi16, LHW>;
+defm : LdPat<extloadi16, LHW>;
+defm : LdPat<sextloadi16, LHWSE>;
+
 
 
 /*

@@ -14,11 +14,17 @@ $llvm_mc --filetype obj -triple=tl45-unknown-unknown -debug crt0.s -o crt0.o
 
 $clang --target=tl45-unknown-none -fintegrated-as -O3 -c -v -Iinclude "$@" -S -emit-llvm -o user_code.ll
 $clang --target=tl45-unknown-none -fintegrated-as -O3 -c -v -Iinclude "$@" -S -o user_code.s
+
 $clang --target=tl45-unknown-none -fintegrated-as -O3 -c -v -Iinclude "$@" -o user_code.o
+
+$clang --target=tl45-unknown-none -fintegrated-as -O3 -c -v -Iinclude ff14/diskio.c -o diskio.o
+$clang --target=tl45-unknown-none -fintegrated-as -Os -c -v -Iinclude ff14/ff.c -o ff.o
+
 
 echo 'Linking:'
 
-$lld -flavor gnu --oformat binary -image-base 0 crt0.o user_code.o -o a.out
+# $lld -flavor gnu --oformat binary -image-base 0 crt0.o user_code.o -o a.out
+$lld -flavor gnu --oformat binary -image-base 0 crt0.o user_code.o diskio.o ff.o -o a.out
 
 echo 'Dumping:'
 

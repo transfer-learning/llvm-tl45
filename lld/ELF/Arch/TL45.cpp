@@ -56,7 +56,7 @@ RelExpr TL45::getRelExpr(RelType type, const Symbol &s,
 }
 
 inline void checkIntValid(uint8_t *loc, uint64_t v, RelType type) {
-  checkAlignment(loc, v, 4, type);
+  // checkAlignment(loc, v, 4, type);
 }
 
 void TL45::relocateOne(uint8_t *loc, RelType type, uint64_t val) const {

@@ -78,6 +78,7 @@ enum NodeType : unsigned {
   SELECT_MOVE,
   CMP_SELECT_MOVE,
   SELECT_CC,
+  SUB_TERM,
   NAND
 };
 } // namespace TL45ISD
@@ -121,6 +122,10 @@ public:
                                                   MachineBasicBlock *BB) const override;
 
   bool shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy, EVT NewVT) const override;
+
+  bool canMergeStoresTo(unsigned AS, EVT MemVT, const SelectionDAG &DAG) const override;
+
+
 
 private:
   void analyzeInputArgs(MachineFunction &MF, CCState &CCInfo,

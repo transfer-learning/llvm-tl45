@@ -22,7 +22,7 @@ namespace {
 class TL45AsmBackend : public MCAsmBackend {
   Triple::OSType OSType;
 public:
-  TL45AsmBackend(const Target &T, Triple::OSType _OSType) : MCAsmBackend(support::endianness::little),
+  TL45AsmBackend(const Target &T, Triple::OSType _OSType) : MCAsmBackend(support::endianness::big),
                                                               OSType(_OSType) {
   }
 

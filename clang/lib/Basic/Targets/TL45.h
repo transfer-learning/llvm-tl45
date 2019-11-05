@@ -28,15 +28,13 @@ public:
     
 
     PointerWidth = PointerAlign = 32;
-    BoolWidth = BoolAlign = 32;
-    CharWidth = 8;
-    //CharWidth = 32;
-    CharAlign = 8;
-    ShortWidth = ShortAlign = 32;
+    BoolWidth = BoolAlign = 8;
+    CharWidth = CharAlign = 8;
+    ShortWidth = ShortAlign = 16;
     IntWidth = IntAlign = 32;
+    LongWidth = LongAlign = 32;
+    LongLongWidth = LongLongAlign = 64;
     BigEndian = true;
-
-    MinimumAddressableBits = 32;
   }
 
   ArrayRef<const char *> getGCCRegNames() const override;

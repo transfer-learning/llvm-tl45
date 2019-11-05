@@ -72,9 +72,9 @@ unsigned TL45InstrInfo::resolveComparison(MachineBasicBlock &MBB,
   // a != b  ==> skpe a, b; jmp dst
 
   if (isImm) {
-    BuildMI(MBB, I, DL, get(TL45::SUBI)).addReg(TL45::r0).addReg(a.getReg()).addImm(b.getImm());
+    BuildMI(MBB, I, DL, get(TL45::SUB_TERMI)).addReg(TL45::r0).addReg(a.getReg()).addImm(b.getImm());
   } else {
-    BuildMI(MBB, I, DL, get(TL45::SUB)).addReg(TL45::r0).addReg(a.getReg()).addReg(b.getReg());
+    BuildMI(MBB, I, DL, get(TL45::SUB_TERM)).addReg(TL45::r0).addReg(a.getReg()).addReg(b.getReg());
   }
 
   bytesAdded += 1;
@@ -242,13 +242,22 @@ unsigned TL45InstrInfo::insertBranch(
 
   unsigned Count = 0;
 
-  // condition
-  BuildMI(MBB, MBB.end(), DL, get(Cond[1].getImm()), TL45::r0).add(Cond[2]).add(Cond[3]);
-  Count++;
+  unsigned JmpOpc = Cond[0].getImm();
+  if (JmpOpc == TL45::CMP_JMP || JmpOpc == TL45::CMPI_JMP) {
 
-  // True branch instruction
-  BuildMI(MBB, MBB.end(), DL, get(Cond[0].getImm())).addMBB(TBB);
-  Count++;
+    BuildMI(MBB, MBB.end(), DL, get(JmpOpc)).add(Cond.slice(1)).addMBB(TBB);
+    Count++;
+
+  } else {
+
+    // condition
+    BuildMI(MBB, MBB.end(), DL, get(Cond[1].getImm()), TL45::r0).add(Cond[2]).add(Cond[3]);
+    Count++;
+
+    // True branch instruction
+    BuildMI(MBB, MBB.end(), DL, get(Cond[0].getImm())).addMBB(TBB);
+    Count++;
+  }
 
   if (FBB) {
     // Two-way Conditional branch. Insert the second branch.
@@ -277,13 +286,17 @@ static bool getAnalyzableBrOpc(unsigned Opc) {
     }
   }
 
+  if (Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP) {
+    return true;
+  }
+
   return false;
 }
 
 static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
                                   MachineBasicBlock *&BB,
                                   SmallVectorImpl<MachineOperand> &Cond,
-                                  MachineInstr &LastInst) {
+                          MachineBasicBlock::reverse_iterator LastInstI) {
   assert(getAnalyzableBrOpc(Opc) && "Not an analyzable branch");
   int NumOp = Inst->getNumExplicitOperands();
 
@@ -292,24 +305,35 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
   BB = Inst->getOperand(NumOp-1).getMBB();
   // Cond.push_back(MachineOperand::CreateImm(Opc));
 
-  for (int i = 0; i < NumOp-1; i++)
-    Cond.push_back(Inst->getOperand(i));
+  if (Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP) {
 
-  assert((LastInst.getOpcode() == TL45::SUB || LastInst.getOpcode() == TL45::SUBI) && "unknown predicate");
+    Cond.push_back(MachineOperand::CreateImm(Inst->getOpcode()));
 
-  // This is based heavily off of RISCV parseCondBranch()
+    for (int i = 0; i < NumOp-1; i++)
+      Cond.push_back(Inst->getOperand(i));
 
-  // jump opcode
-  Cond.push_back(MachineOperand::CreateImm(Inst->getOpcode()));
+  } else {
 
-  // SUB/SUBI
-  Cond.push_back(MachineOperand::CreateImm(LastInst.getOpcode()));
+//  for (int i = 0; i < NumOp-1; i++)
+//    Cond.push_back(Inst->getOperand(i));
 
-  // SUBI r0, r5, 4
-  //           ^  ^
-  Cond.push_back(LastInst.getOperand(1));
-  Cond.push_back(LastInst.getOperand(2));
+    MachineInstr &LastInst = *LastInstI;
 
+    assert((LastInst.getOpcode() == TL45::SUB_TERM || LastInst.getOpcode() == TL45::SUB_TERMI) && "unknown predicate");
+
+    // This is based heavily off of RISCV parseCondBranch()
+
+    // jump opcode
+    Cond.push_back(MachineOperand::CreateImm(Inst->getOpcode()));
+
+    // SUB/SUBI
+    Cond.push_back(MachineOperand::CreateImm(LastInst.getOpcode()));
+
+    // SUBI r0, r5, 4
+    //           ^  ^
+    Cond.push_back(LastInst.getOperand(1));
+    Cond.push_back(LastInst.getOperand(2));
+  }
 }
 
 /// Copied From TargetInstrInfo.h:
@@ -405,7 +429,7 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
     }
 
     // Conditional branch
-    AnalyzeCondBr(LastInst, LastOpc, TBB, Cond, *I);
+    AnalyzeCondBr(LastInst, LastOpc, TBB, Cond, I);
     return false;
   }
 
@@ -434,7 +458,7 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
   if (!LastInst->isUnconditionalBranch())
     return true;
 
-  AnalyzeCondBr(SecondLastInst, SecondLastOpc, TBB, Cond, *I);
+  AnalyzeCondBr(SecondLastInst, SecondLastOpc, TBB, Cond, I);
   FBB = LastInst->getOperand(0).getMBB();
 
   return false;
@@ -464,26 +488,26 @@ unsigned TL45InstrInfo::removeBranch(MachineBasicBlock &MBB,
   }
 
   // remove the last instruction if it is a set flags subtract.
-  while (I != REnd) {
-    // Skip past debug instructions.
-    if (I->isDebugInstr()) {
-      ++I;
-      continue;
-    }
-
-    // Not a subtract
-    if ((*I).getOpcode() != TL45::SUB && (*I).getOpcode() != TL45::SUBI)
-      break;
-
-    // Return value isn't discarded.
-    if ((*I).getOperand(0).getReg() != TL45::r0)
-      break;
-
-    // Remove the branch.
-    I->eraseFromParent();
-    I = MBB.rbegin();
-    ++removed;
-  }
+//  while (I != REnd) {
+//    // Skip past debug instructions.
+//    if (I->isDebugInstr()) {
+//      ++I;
+//      continue;
+//    }
+//
+//    // Not a subtract
+//    if ((*I).getOpcode() != TL45::SUB && (*I).getOpcode() != TL45::SUBI)
+//      break;
+//
+//    // Return value isn't discarded.
+//    if ((*I).getOperand(0).getReg() != TL45::r0)
+//      break;
+//
+//    // Remove the branch.
+//    I->eraseFromParent();
+//    I = MBB.rbegin();
+//    ++removed;
+//  }
 
   return removed;
 }

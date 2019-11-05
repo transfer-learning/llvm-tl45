@@ -33,6 +33,8 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
 
 
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
 
 //  ISD::NodeType IllegalNodes[] = {ISD::SRA, ISD::ROTL, ISD::ROTR, ISD::FSHL, ISD::FSHR};
@@ -56,12 +58,14 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
   setOperationAction(ISD::MUL, MVT::i32, Expand);
   setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
   setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
-//  setOperationAction(ISD::SDIV, MVT::i32, Expand);
-//  setOperationAction(ISD::UDIV, MVT::i32, Expand);
-//  setOperationAction(ISD::SREM, MVT::i32, Expand);
-  setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
-//  setOperationAction(ISD::UREM, MVT::i32, Expand);
 
+  setOperationAction(ISD::SDIV, MVT::i32, Expand);
+  setOperationAction(ISD::UDIV, MVT::i32, Expand);
+  setOperationAction(ISD::SREM, MVT::i32, Expand);
+
+  setOperationAction(ISD::SDIVREM, MVT::i32, Expand);
+  setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
+  setOperationAction(ISD::UREM, MVT::i32, Expand);
 
   setOperationAction(ISD::BR_CC, MVT::Other, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
@@ -78,6 +82,14 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
 
   setOperationAction(ISD::SETCC, MVT::i32, Expand);
   setOperationAction(ISD::SETCC, MVT::Other, Expand);
+
+  setOperationAction(ISD::BRCOND, MVT::i32, Expand);
+  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+
+  unsigned int Ops[] = {ISD::BSWAP, ISD::CTTZ, ISD::CTLZ, ISD::CTPOP, ISD::BITREVERSE};
+  for (unsigned int Op : Ops)
+    setOperationAction(Op, MVT::i32, Expand);
+
 }
 
 void TL45TargetLowering::analyzeInputArgs(
@@ -876,14 +888,14 @@ SDValue TL45TargetLowering::lowerBrCc(SDValue Op, SelectionDAG &DAG) const {
 
   SDLoc DL(Op);
 
-  if (isa<ConstantSDNode>(RHS)) {
-    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Glue, Chain,
+  if (isa<ConstantSDNode>(RHS) && cast<ConstantSDNode>(RHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
+    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
                        DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, Dest);
-  }else if (isa<ConstantSDNode>(LHS)) {
-    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Glue, Chain,
+  }else if (isa<ConstantSDNode>(LHS) && cast<ConstantSDNode>(LHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
+    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
                        DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL, MVT::i32), RHS, LHS, Dest);
   } else {
-    return DAG.getNode(TL45ISD::CMP_JMP, DL, MVT::Glue, Chain,
+    return DAG.getNode(TL45ISD::CMP_JMP, DL, MVT::Other, Chain,
                        DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, Dest);
   }
 }
@@ -1030,6 +1042,10 @@ const char *TL45TargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "TL45ISD::CMP_SKIP";
   case TL45ISD::CMP_JMP:
     return "TL45ISD::CMP_JMP";
+  case TL45ISD::CMPI_JMP:
+    return "TL45ISD::CMPI_JMP";
+  case TL45ISD::SUB_TERM:
+    return "TL45ISD::SUB_TERM";
   case TL45ISD::SELECT_MOVE:
     return "TL45ISD::SELECT_MOVE";
   case TL45ISD::CMP_SELECT_MOVE:
@@ -1065,7 +1081,15 @@ static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
   case ISD::SETULT:
     return TL45::JBI;
   case ISD::SETUGE:
+    return TL45::JNBI;
+  case ISD::SETGT:
+    return TL45::JGI;
+  case ISD::SETUGT:
     return TL45::JAI;
+  case ISD::SETLE:
+    return TL45::JLEI;
+  case ISD::SETULE:
+    return TL45::JBEI;
   }
 }
 
@@ -1161,7 +1185,7 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   // Insert appropriate branch.
   unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
 
-  BuildMI(HeadMBB, DL, TII.get(TL45::SUB), TL45::r0)
+  BuildMI(HeadMBB, DL, TII.get(TL45::SUB_TERM), TL45::r0)
       .addReg(LHS)
       .addReg(RHS);
 
@@ -1220,10 +1244,14 @@ TL45TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
 bool TL45TargetLowering::shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy, EVT NewVT) const {
   // we don't support i16 loads right now, so don't merge into one.
-  if (NewVT == MVT::i16) {
-    return false;
-  }
+//  if (NewVT == MVT::i16) {
+//    return false;
+//  }
 
   return TargetLoweringBase::shouldReduceLoadWidth(Load, ExtTy, NewVT);
+}
+
+bool TL45TargetLowering::canMergeStoresTo(unsigned AS, EVT MemVT, const SelectionDAG &DAG) const {
+  return true; // MemVT == MVT::i8 || MemVT == MVT::i32;
 }
 
