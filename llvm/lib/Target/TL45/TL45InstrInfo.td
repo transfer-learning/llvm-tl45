@@ -88,7 +88,6 @@ let Defs = [eflags], isAsCheapAsAMove = 1 in {
   let isCompare = 1, isTerminator = 1, isCodeGenOnly = 1 in
     defm SUB_TERM : ALUTypeInstr<0x2, "sub", sub_term>;
 
-  // defm MUL : ALUTypeInstr<0x3, "mul", mul>;
 
   let isCommutable = 1 in {
     defm OR : ALUTypeInstr<0x6, "or", or>;
@@ -104,6 +103,9 @@ let Defs = [eflags], isAsCheapAsAMove = 1 in {
     def CMP : RRCmpTypeInstr<0x5, "cmp", []>;
   let mode = 0b101, isCompare = 1, isTerminator = 1, isPseudo = 1 in
     def CMPI : RICmpTypeInstr<0x5, "cmpi", []>;
+}
+let isCommutable = 1 in {
+  defm MUL : ALUTypeInstr<0x3, "mul", mul>;
 }
 
 let mode = 0b001, isAsCheapAsAMove = 1 in {
