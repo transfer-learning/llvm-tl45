@@ -56,7 +56,7 @@ static SDNode *selectImm(SelectionDAG *CurDAG, const SDLoc &DL, int64_t Imm,
 void TL45DAGToDAGISel::Select(SDNode *Node) {
 // If we have a custom node, we have already selected.
   if (Node->isMachineOpcode()) {
-    LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
+//    LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
     Node->setNodeId(-1);
     return;
   }

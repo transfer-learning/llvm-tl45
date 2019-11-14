@@ -131,7 +131,7 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
   // investigation. Get the number of bytes to allocate from the FrameInfo.
   uint64_t StackSize = MFI.getStackSize();
 
-  if (hasFramePointer) StackSize += 4;
+//  if (hasFramePointer) StackSize += 4;
 
   // Early exit if there is no need to allocate on the stack
   if (StackSize == 0 && !MFI.adjustsStack())
@@ -168,9 +168,9 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
 
   // Generate new FP.
   if (hasFramePointer) {
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(StackSize - 4);
+    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(StackSize);
     BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI)).addReg(TL45::bp).addReg(TL45::sp)
-    .addImm(StackSize - 4).setMIFlag(MachineInstr::FrameSetup);
+    .addImm(StackSize).setMIFlag(MachineInstr::FrameSetup);
 
 //    adjustReg(MBB, MBBI, DL, FPReg, SPReg,
 //              StackSize - RVFI->getVarArgsSaveSize(), MachineInstr::FrameSetup);
@@ -219,8 +219,6 @@ void TL45FrameLowering::emitEpilogue(MachineFunction &MF,
   auto LastFrameDestroy = std::prev(MBBI, MFI.getCalleeSavedInfo().size());
 
   uint64_t StackSize = MFI.getStackSize();
-
-  if (hasFramePointer) StackSize += 4;
 
   uint64_t FPOffset = StackSize;// - RVFI->getVarArgsSaveSize();
 

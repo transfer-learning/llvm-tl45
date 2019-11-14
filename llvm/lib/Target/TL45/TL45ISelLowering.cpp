@@ -6,7 +6,7 @@
 #include "TL45TargetMachine.h"
 #include <TL45MachineFunctionInfo.h>
 
-#define DEBUG_TYPE "lc2200-target-lowering"
+#define DEBUG_TYPE "tl45-target-lowering"
 
 using namespace llvm;
 
@@ -229,7 +229,7 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
   EVT LocVT = VA.getLocVT();
   EVT ValVT = VA.getValVT();
   EVT PtrVT = MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0));
-  int FI = MFI.CreateFixedObject(ValVT.getSizeInBits() / 32,
+  int FI = MFI.CreateFixedObject(ValVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit(),
                                  VA.getLocMemOffset(), /*Immutable=*/true);
   SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
   SDValue Val;
@@ -841,12 +841,12 @@ SDValue TL45TargetLowering::ExpandLibCall(const char *LibcallName, SDValue Op, b
   std::pair<SDValue, SDValue> CallInfo = LowerCallTo(CLI);
 
   if (!CallInfo.second.getNode()) {
-    LLVM_DEBUG(dbgs() << "Created tailcall: "; DAG.getRoot().dump(&DAG));
+//    LLVM_DEBUG(dbgs() << "Created tailcall: "; DAG.getRoot().dump(&DAG));
     // It's a tailcall, return the chain (which is the DAG root).
     return DAG.getRoot();
   }
 
-  LLVM_DEBUG(dbgs() << "Created libcall: "; CallInfo.first.dump(&DAG));
+//  LLVM_DEBUG(dbgs() << "Created libcall: "; CallInfo.first.dump(&DAG));
   return CallInfo.first;
 }
 
