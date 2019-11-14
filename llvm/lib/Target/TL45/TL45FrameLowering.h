@@ -42,6 +42,8 @@ public:
   virtual int getFrameIndexReference(const MachineFunction &MF, int FI,
                                      unsigned &FrameReg) const override;
 
+
+
 //  bool spillCalleeSavedRegisters(MachineBasicBlock &MBB,
 //                                 MachineBasicBlock::iterator MI,
 //                                 const std::vector<CalleeSavedInfo> &CSI,
@@ -64,7 +66,7 @@ public:
   bool isFPCloseToIncomingSP() const override { return false; }
 
   bool enableShrinkWrapping(const MachineFunction &MF) const override {
-    return true;
+    return false;
   }
 
   MachineBasicBlock::iterator
