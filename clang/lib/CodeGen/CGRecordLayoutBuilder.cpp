@@ -786,8 +786,8 @@ CGRecordLayout *CodeGenTypes::ComputeRecordLayout(const RecordDecl *D,
   uint64_t TypeSizeInBits = getContext().toBits(Layout.getSize());
 
   if (TypeSizeInBits != getDataLayout().getTypeAllocSizeInBits(Ty)) {
-    llvm::errs() << TypeSizeInBits << "\n";
-    llvm::errs() << getDataLayout().getTypeAllocSizeInBits(Ty) << "\n";
+//    llvm::errs() << TypeSizeInBits << "\n";
+//    llvm::errs() << getDataLayout().getTypeAllocSizeInBits(Ty) << "\n";
   }
 
   assert(TypeSizeInBits == getDataLayout().getTypeAllocSizeInBits(Ty) &&
