@@ -61,7 +61,7 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
     setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
 
     setOperationAction(ISD::SDIV, MVT::i32, Expand);
-    setOperationAction(ISD::UDIV, MVT::i32, Expand);
+//    setOperationAction(ISD::UDIV, MVT::i32, Expand);
     setOperationAction(ISD::SREM, MVT::i32, Expand);
 
     setOperationAction(ISD::MULHS, MVT::i32, Expand);

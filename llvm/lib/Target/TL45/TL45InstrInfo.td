@@ -107,6 +107,7 @@ let Defs = [eflags], isAsCheapAsAMove = 1 in {
 let isCommutable = 1 in {
   defm MUL : ALUTypeInstr<0x3, "mul", mul>;
 }
+  defm UDIV: ALUTypeInstr<0x18, "udiv", udiv>;
 
 let mode = 0b001, isAsCheapAsAMove = 1 in {
   def XCHG : RRTypeInstr<0x4, "xchg", []>;
