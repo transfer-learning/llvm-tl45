@@ -203,10 +203,6 @@ let isBarrier = 1, hasSideEffects = 1 in
 let isCall = 1 in
   def CALL : CallTypeInstr<0xD, "call", [(tl45_call GRRegs:$base, TL45imm16:$imm)]>;
 
-// let isCall = 1 in
-//   def CALLI : CallITypeInstr<0xD, "calli", [(tl45_call TL45imm16:$imm)]>;
-
-
 /*  Various Patterns and Pseudo */
 
 def : Pat<(store GRRegs:$rs2, GRRegs:$rs1), (SW GRRegs:$rs2, GRRegs:$rs1, 0)>;
@@ -269,6 +265,7 @@ let isReturn = 1, isBarrier = 1, isTerminator = 1 in {
 }
 */
 
+// TODO Long Call
 def : Pat<(tl45_call tglobaladdr:$func), (CALL r0, tglobaladdr:$func)>;
 def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
 

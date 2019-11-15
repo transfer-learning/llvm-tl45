@@ -172,7 +172,7 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 //    }
 //    break;
 //  }
-
+//      case TL45::
 //  case TL45::PseudoCALL: {
 //    MachineOperand &op = MI.getOperand(0);
 //
@@ -286,11 +286,8 @@ static bool getAnalyzableBrOpc(unsigned Opc) {
     }
   }
 
-  if (Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP) {
-    return true;
-  }
+    return Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP;
 
-  return false;
 }
 
 static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
@@ -368,16 +365,6 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                     SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
-
-  static int foo = 0;
-
-  if (MBB.getFullName() == "SHA1Update:entry") {
-    foo++;
-    llvm::errs() << "foo " << foo << "\n";
-    if (foo == 44) {
-      llvm::errs() << "foo\n";
-    }
-  }
 
   // Skip all the debug instructions.
   while (I != REnd && I->isDebugInstr())

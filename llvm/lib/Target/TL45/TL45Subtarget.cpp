@@ -13,4 +13,4 @@ using namespace llvm;
 TL45Subtarget::TL45Subtarget(const Triple &TT, const StringRef CPU, const StringRef FS, const TL45TargetMachine &TM) :
   TL45GenSubtargetInfo(TT, CPU, FS),
   TLInfo(TM, *this),
-  FrameLowering(*this, /* Alignment in units of memory *not* bytes */ 1) {}
+  FrameLowering(*this, /* Alignment in units of memory */ 4) {}

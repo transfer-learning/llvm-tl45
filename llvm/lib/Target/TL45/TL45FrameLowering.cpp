@@ -1,3 +1,4 @@
+#include <iostream>
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -106,7 +107,6 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
   bool hasFramePointer = hasFP(MF);
 
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  // auto *RVFI = MF.getInfo<TL45MachineFunctionInfo>();
   const TL45RegisterInfo *RI = STI.getRegisterInfo();
   const TL45InstrInfo *TII = STI.getInstrInfo();
   MachineBasicBlock::iterator MBBI = MBB.begin();
