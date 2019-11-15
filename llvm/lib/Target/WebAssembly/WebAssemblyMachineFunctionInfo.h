@@ -61,7 +61,7 @@ class WebAssemblyFunctionInfo final : public MachineFunctionInfo {
 
 public:
   explicit WebAssemblyFunctionInfo(MachineFunction &MF)
-      : MF(MF), SPVReg(WebAssembly::NoRegister) {}
+      : MF(MF), SPVReg(WebAssembly::NoRegister), SPLocal(-1) {}
   ~WebAssemblyFunctionInfo() override;
   void initializeBaseYamlFields(const yaml::WebAssemblyFunctionInfo &YamlMFI);
 
