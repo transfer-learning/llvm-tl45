@@ -232,9 +232,9 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
     EVT PtrVT = MVT::getIntegerVT(DAG.getDataLayout().getPointerSizeInBits(0));
     // TODO: check: -1 adjustment is for return address
     uint64_t SlotSize = ValVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
-    uint64_t RASlotSize = PtrVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
+//    uint64_t RASlotSize = PtrVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
     int FI = MFI.CreateFixedObject(SlotSize,
-                                   VA.getLocMemOffset() + 4, /*Immutable=*/true);
+                                   VA.getLocMemOffset(), /*IsImmutable=*/true);
     SDValue FIN = DAG.getFrameIndex(FI, PtrVT);
     SDValue Val;
 
@@ -264,9 +264,6 @@ SDValue TL45TargetLowering::LowerFormalArguments(
         const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
         SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
 
-//     assert(!IsVarArg && "var arg not yet supported");
-//     TODO Vararg
-
     switch (CallConv) {
         case CallingConv::C:
         case CallingConv::Fast:
@@ -292,6 +289,7 @@ SDValue TL45TargetLowering::LowerFormalArguments(
     }
 
     EVT PtrVT = getPointerTy(DAG.getDataLayout());
+    unsigned int PtrLengthInBytes = PtrVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
     MVT XLenVT = MVT::i32;
     unsigned XLenInBytes = XLenVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
     // Used with vargs to acumulate store chains.
@@ -300,6 +298,7 @@ SDValue TL45TargetLowering::LowerFormalArguments(
     // Assign locations to all of the incoming arguments.
     SmallVector<CCValAssign, 16> ArgLocs;
     CCState CCInfo(CallConv, IsVarArg, MF, ArgLocs, *DAG.getContext());
+    CCInfo.AllocateStack(PtrLengthInBytes, PtrLengthInBytes);
     analyzeInputArgs(MF, CCInfo, Ins, /*IsRet=*/false);
 
     for (unsigned i = 0, e = ArgLocs.size(); i != e; ++i) {
@@ -338,7 +337,7 @@ SDValue TL45TargetLowering::LowerFormalArguments(
         const TargetRegisterClass *RC = &TL45::GRRegsRegClass;
         MachineFrameInfo &MFI = MF.getFrameInfo();
         MachineRegisterInfo &RegInfo = MF.getRegInfo();
-        TL45MachineFunctionInfo *RVFI = MF.getInfo<TL45MachineFunctionInfo>();
+        TL45MachineFunctionInfo *TL45MFI = MF.getInfo<TL45MachineFunctionInfo>();
 
         // Offset of the first variable argument from stack pointer, and size of
         // the vararg save area. For now, the varargs save area is either zero or
@@ -358,7 +357,9 @@ SDValue TL45TargetLowering::LowerFormalArguments(
         // Record the frame index of the first variable argument
         // which is a value necessary to VASTART.
         int FI = MFI.CreateFixedObject(XLenInBytes, VaArgOffset, true);
-        RVFI->setVarArgsFrameIndex(FI);
+        // Subtract RA slot
+        uint64_t RASlotSize = PtrVT.getSizeInBits() / MF.getDataLayout().getBitsPerMemoryUnit();
+        TL45MFI->setVarArgsFrameIndex(FI);
 
         // Copy the integer registers that may have been used for passing varargs
         // to the vararg save area.
@@ -376,7 +377,7 @@ SDValue TL45TargetLowering::LowerFormalArguments(
 //          ->setValue((Value *)nullptr);
 //      OutChains.push_back(Store);
 //    }
-        RVFI->setVarArgsSaveSize(VarArgsSaveSize);
+        TL45MFI->setVarArgsSaveSize(VarArgsSaveSize);
     }
 
     // All stores are grouped in one node to allow the matching between
@@ -491,6 +492,7 @@ TL45TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     return DAG.getNode(TL45ISD::RET, DL, MVT::Other, RetOps);
 }
 
+/* CALL */
 SDValue
 TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
                               SmallVectorImpl<SDValue> &InVals) const {
@@ -688,7 +690,6 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     Glue = Chain.getValue(1);
     // ACTUAL CALL INSTRUCTION
 
-    MF.setCallSiteLandingPad()
 
     // Mark the end of the call, which is glued to the call itself.
     Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, PtrVT, true),

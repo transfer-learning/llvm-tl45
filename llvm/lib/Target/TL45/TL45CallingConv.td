@@ -34,6 +34,8 @@ def CC_TL45 : CallingConv<[
   // The first 3 integer arguments are passed in integer registers.
   CCIfType<[i32], CCAssignToReg<[r2, r3, r4, r5, r6]>>,
 
+  CCIfType<[i8], CCAssignToStack<1,1>>,
+  CCIfType<[i16], CCAssignToStack<2,2>>,
   // Integer values get stored in stack slots that are 4 bytes in
   // size and 4-byte aligned.
   CCIfType<[i32], CCAssignToStack<4, 4>>
