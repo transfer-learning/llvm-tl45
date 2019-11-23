@@ -264,15 +264,15 @@ SDValue TL45TargetLowering::LowerFormalArguments(
         const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
         SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
 
-    // assert(!IsVarArg && "var arg not yet supported");
-    // TODO Vararg
+//     assert(!IsVarArg && "var arg not yet supported");
+//     TODO Vararg
 
     switch (CallConv) {
-        default:
-            report_fatal_error("Unsupported calling convention");
         case CallingConv::C:
         case CallingConv::Fast:
             break;
+        default:
+            report_fatal_error("Unsupported calling convention");
     }
 
     MachineFunction &MF = DAG.getMachineFunction();
@@ -686,6 +686,9 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
 
     Chain = DAG.getNode(TL45ISD::CALL, DL, NodeTys, Ops);
     Glue = Chain.getValue(1);
+    // ACTUAL CALL INSTRUCTION
+
+    MF.setCallSiteLandingPad()
 
     // Mark the end of the call, which is glued to the call itself.
     Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, PtrVT, true),
