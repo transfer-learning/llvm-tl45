@@ -25,15 +25,13 @@ def RetCC_TL45 : CallingConv<[
 // TL45 Argument Calling Conventions
 //===----------------------------------------------------------------------===//
 def CC_TL45 : CallingConv<[
+  CCIfVarArg<CCAssignToStack<4,4>>,
   // Promote i8 arguments to i32.
   CCIfType<[i8], CCPromoteToType<i32>>,
-
   // Promote i16 arguments to i32.
   CCIfType<[i16], CCPromoteToType<i32>>,
-
   // The first 3 integer arguments are passed in integer registers.
   CCIfType<[i32], CCAssignToReg<[r2, r3, r4, r5, r6]>>,
-
   CCIfType<[i8], CCAssignToStack<1,1>>,
   CCIfType<[i16], CCAssignToStack<2,2>>,
   // Integer values get stored in stack slots that are 4 bytes in
