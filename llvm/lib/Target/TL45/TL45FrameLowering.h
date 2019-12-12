@@ -27,7 +27,7 @@ public:
   explicit TL45FrameLowering(const TL45Subtarget &sti, unsigned Alignment)
           : TargetFrameLowering(StackGrowsDown, Alignment, 0, Alignment), STI(sti) {}
 
-  void determineFrameLayout(MachineFunction &MF) const;
+  void determineFrameLayout(MachineFunction &MF, bool hasFP) const;
 
   void adjustReg(MachineBasicBlock &MBB,
                  MachineBasicBlock::iterator MBBI,

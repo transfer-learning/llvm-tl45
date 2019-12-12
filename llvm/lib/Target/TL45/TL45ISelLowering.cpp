@@ -23,45 +23,36 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
     // Compute derived properties from the register classes.
     computeRegisterProperties(STI.getRegisterInfo());
 
+
+    // Tell LLVM about SP
+    setStackPointerRegisterToSaveRestore(TL45::sp);
+
     for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
         setLoadExtAction(N, MVT::i32, MVT::i1, Promote);
 
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i32, MVT::i16, Expand);
     setLoadExtAction(ISD::SEXTLOAD, MVT::i32, MVT::i16, Expand);
 
-//  setOperationAction(ISD::STORE, MVT::i8, Legal);
-//  setOperationAction(ISD::LOAD, MVT::i8, Legal);
-
-
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
     setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
 
-//  ISD::NodeType IllegalNodes[] = {ISD::SRA, ISD::ROTL, ISD::ROTR, ISD::FSHL, ISD::FSHR};
-//
-//  for (ISD::NodeType node : IllegalNodes) {
-//    setOperationAction(node, MVT::i32, Expand);
-//  }
+    // Variable Array (Dynamic StackAlloc)
+    setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i32, Expand);
 
     setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 
     setOperationAction(ISD::BRCOND, MVT::i32, Expand);
 
-//  setOperationAction(ISD::SUB, MVT::i32, Expand);
-
-//  setOperationAction(ISD::SRA, MVT::i32, Custom);
-//  setOperationAction(ISD::SHL, MVT::i32, Custom);
-//  setOperationAction(ISD::SRL, MVT::i32, Custom);
+    // Rotate Expand
     setOperationAction(ISD::ROTL, MVT::i32, Expand);
     setOperationAction(ISD::ROTR, MVT::i32, Expand);
 
-//  setOperationAction(ISD::MUL, MVT::i32, Expand);
     setOperationAction(ISD::SMUL_LOHI, MVT::i32, Expand);
     setOperationAction(ISD::UMUL_LOHI, MVT::i32, Expand);
 
     setOperationAction(ISD::SDIV, MVT::i32, Expand);
-//    setOperationAction(ISD::UDIV, MVT::i32, Expand);
     setOperationAction(ISD::SREM, MVT::i32, Expand);
 
     setOperationAction(ISD::MULHS, MVT::i32, Expand);
@@ -94,6 +85,32 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
     for (unsigned int Op : Ops)
         setOperationAction(Op, MVT::i32, Expand);
 
+}
+
+SDValue TL45TargetLowering::LowerOperation(SDValue Op,
+                                           SelectionDAG &DAG) const {
+  switch (Op.getOpcode()) {
+    default:
+      report_fatal_error("unimplemented operand");
+    case ISD::BR_CC:
+      return lowerBrCc(Op, DAG);
+//  case ISD::BR:
+//    return lowerBr(Op, DAG);
+    case ISD::SELECT:
+      return lowerSELECT(Op, DAG);
+    case ISD::SELECT_CC:
+      return lowerSelectCc(Op, DAG);
+    case ISD::AND:
+      return lowerAnd(Op, DAG);
+    case ISD::OR:
+      return lowerOr(Op, DAG);
+    case ISD::XOR:
+      return lowerXor(Op, DAG);
+    case ISD::VASTART:
+      return lowerVASTART(Op, DAG);
+    case ISD::GlobalAddress:
+      return lowerGlobalAddress(Op, DAG);
+  }
 }
 
 void TL45TargetLowering::analyzeInputArgs(
@@ -718,32 +735,6 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     return Chain;
 }
 
-SDValue TL45TargetLowering::LowerOperation(SDValue Op,
-                                           SelectionDAG &DAG) const {
-    switch (Op.getOpcode()) {
-        default:
-            report_fatal_error("unimplemented operand");
-        case ISD::BR_CC:
-            return lowerBrCc(Op, DAG);
-//  case ISD::BR:
-//    return lowerBr(Op, DAG);
-        case ISD::SELECT:
-            return lowerSELECT(Op, DAG);
-        case ISD::SELECT_CC:
-            return lowerSelectCc(Op, DAG);
-        case ISD::AND:
-            return lowerAnd(Op, DAG);
-        case ISD::OR:
-            return lowerOr(Op, DAG);
-        case ISD::XOR:
-            return lowerXor(Op, DAG);
-        case ISD::VASTART:
-            return lowerVASTART(Op, DAG);
-        case ISD::GlobalAddress:
-            return lowerGlobalAddress(Op, DAG);
-    }
-}
-
 static SDValue getTargetNode(GlobalAddressSDNode *N, SDLoc DL, EVT Ty,
                              SelectionDAG &DAG, unsigned Flags) {
     return DAG.getTargetGlobalAddress(N->getGlobal(), DL, Ty, 0, Flags);
@@ -1108,7 +1099,7 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
     // We produce the following control flow:
     //     HeadMBB
     //     |  \
-  //     |  IfFalseMBB
+    //     |  IfFalseMBB
     //     | /
     //    TailMBB
     //

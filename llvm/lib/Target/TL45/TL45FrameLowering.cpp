@@ -13,6 +13,8 @@
 #include "TL45FrameLowering.h"
 #include "TL45Subtarget.h"
 
+#define DEBUG_TYPE "tl45-frame-lowering"
+
 using namespace llvm;
 //
 //static unsigned materializeOffset(MachineFunction &MF, MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI, unsigned Offset) {
@@ -51,7 +53,7 @@ using namespace llvm;
 //	return StackSize;
 //}
 
-void TL45FrameLowering::determineFrameLayout(MachineFunction &MF) const {
+void TL45FrameLowering::determineFrameLayout(MachineFunction &MF, bool hasFP) const {
   MachineFrameInfo &MFI = MF.getFrameInfo();
   const TL45RegisterInfo *RI = STI.getRegisterInfo();
 
@@ -72,6 +74,14 @@ void TL45FrameLowering::determineFrameLayout(MachineFunction &MF) const {
 
   // Make sure the frame is aligned.
   FrameSize = alignTo(FrameSize, StackAlign);
+
+  if (hasFP) {
+    auto TMDL = MF.getDataLayout();
+    uint64_t ptr_size = TMDL.getPointerSizeInBits() / TMDL.getBitsPerMemoryUnit();
+    FrameSize += ptr_size;
+    LLVM_DEBUG(dbgs() << "[TL45FrameLowering::determineFrameLayout] MF: '"
+    << MF.getName() << "' has frame pointer, incrementing stack frame size by ptr_size.\n");
+  }
 
   // Update frame info.
   MFI.setStackSize(FrameSize);
@@ -111,10 +121,17 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
   const TL45InstrInfo *TII = STI.getInstrInfo();
   MachineBasicBlock::iterator MBBI = MBB.begin();
 
+
+  LLVM_DEBUG(dbgs() << "Emitting Prologue for function: " << MF.getName() << "\n");
+
   if (RI->needsStackRealignment(MF) && MFI.hasVarSizedObjects()) {
     report_fatal_error(
-            "RISC-V backend can't currently handle functions that need stack "
+            "TL-45 backend can't currently handle functions that need stack "
             "realignment and have variable sized objects");
+  }
+
+  if (MFI.hasVarSizedObjects()) {
+    LLVM_DEBUG(dbgs() << "Detected Variable Sized Items on stack");
   }
 
   Register FPReg = TL45::bp;
@@ -125,19 +142,18 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
   DebugLoc DL;
 
   // Determine the correct frame layout
-  determineFrameLayout(MF);
+  determineFrameLayout(MF, hasFramePointer);
 
   // FIXME (note copied from Lanai): This appears to be overallocating.  Needs
   // investigation. Get the number of bytes to allocate from the FrameInfo.
   uint64_t StackSize = MFI.getStackSize();
-
-//  if (hasFramePointer) StackSize += 4;
 
   // Early exit if there is no need to allocate on the stack
   if (StackSize == 0 && !MFI.adjustsStack())
     return;
 
   // Allocate space on the stack if necessary.
+  // aka Decrement stack pointer
   adjustReg(MBB, MBBI, DL, SPReg, SPReg, -StackSize, MachineInstr::FrameSetup);
 
   // Emit ".cfi_def_cfa_offset StackSize"
@@ -168,9 +184,9 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
 
   // Generate new FP.
   if (hasFramePointer) {
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(StackSize);
+    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(0);
     BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI)).addReg(TL45::bp).addReg(TL45::sp)
-    .addImm(StackSize).setMIFlag(MachineInstr::FrameSetup);
+    .addImm(0).setMIFlag(MachineInstr::FrameSetup);
 
 //    adjustReg(MBB, MBBI, DL, FPReg, SPReg,
 //              StackSize - RVFI->getVarArgsSaveSize(), MachineInstr::FrameSetup);
@@ -220,23 +236,23 @@ void TL45FrameLowering::emitEpilogue(MachineFunction &MF,
 
   uint64_t StackSize = MFI.getStackSize();
 
-  uint64_t FPOffset = StackSize;// - RVFI->getVarArgsSaveSize();
+//  uint64_t FPOffset = StackSize;// - RVFI->getVarArgsSaveSize();
 
   // Restore the stack pointer using the value of the frame pointer. Only
   // necessary if the stack pointer was modified, meaning the stack size is
   // unknown.
   if (RI->needsStackRealignment(MF) || MFI.hasVarSizedObjects()) {
-    assert(hasFP(MF) && "frame pointer should not have been eliminated");
+    assert(hasFramePointer && "frame pointer should not have been eliminated");
 //    adjustReg(MBB, LastFrameDestroy, DL, SPReg, FPReg, -FPOffset,
 //              MachineInstr::FrameDestroy);
-
-    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::ADDI)).addReg(TL45::sp).addReg(TL45::bp).addImm(-(StackSize - 4));
+    // TODO Fixme
+    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::ADDI)).addReg(SPReg).addReg(FPReg).addImm(-(StackSize - 4));
   }
 
   if (hasFramePointer) {
 
     // BP is a linked list!!!
-    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::LW)).addReg(TL45::bp).addReg(TL45::bp).addImm(0);
+    BuildMI(MBB, LastFrameDestroy, DL, TII->get(TL45::LW)).addReg(FPReg).addReg(FPReg).addImm(0);
 
   }
 

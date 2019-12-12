@@ -46,15 +46,15 @@ void TL45RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II, int S
   MachineInstr &MI = *II;
   MachineFunction &MF = *MI.getParent()->getParent();
 
-  LLVM_DEBUG(errs() << "\nFunction : " << MF.getName() << "\n";
-                     errs() << "<--------->\n"
+  LLVM_DEBUG(dbgs() << "\nFunction : " << MF.getName() << "\n";
+                     dbgs() << "<--------->\n"
                             << MI);
 
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
   uint64_t StackSize = MF.getFrameInfo().getStackSize();
   int64_t SPOffset = MF.getFrameInfo().getObjectOffset(FrameIndex);
 
-  LLVM_DEBUG(errs() << "FrameIndex : " << FrameIndex << "\n"
+  LLVM_DEBUG(dbgs() << "FrameIndex : " << FrameIndex << "\n"
                     << "spOffset   : " << SPOffset << "\n"
                     << "stackSize  : " << StackSize << "\n"
                     << "alignment  : "
@@ -115,7 +115,7 @@ void TL45RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II, int S
   Offset = SPOffset + (int64_t)StackSize;
   Offset += MI.getOperand(OpNo + 1).getImm();
 
-  LLVM_DEBUG(errs() << "Offset     : " << Offset << "\n"
+  LLVM_DEBUG(dbgs() << "Offset     : " << Offset << "\n"
                     << "<--------->\n");
 
   if (!MI.isDebugValue() &&
