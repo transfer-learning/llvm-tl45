@@ -184,13 +184,13 @@ void TL45FrameLowering::emitPrologue(MachineFunction &MF,
 
   // Generate new FP.
   if (hasFramePointer) {
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW)).addReg(TL45::bp).addReg(TL45::sp).addImm(0);
-    BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI)).addReg(TL45::bp).addReg(TL45::sp)
-    .addImm(0).setMIFlag(MachineInstr::FrameSetup);
+    BuildMI(MBB, MBBI, DL, TII->get(TL45::SW))
+    .addReg(TL45::bp).addReg(TL45::sp).addImm(0)
+    .setMIFlag(MachineInstr::FrameSetup);
+//    BuildMI(MBB, MBBI, DL, TII->get(TL45::ADDI)).addReg(TL45::bp).addReg(TL45::sp)
+//    .addImm(0).setMIFlag(MachineInstr::FrameSetup);
 
-//    adjustReg(MBB, MBBI, DL, FPReg, SPReg,
-//              StackSize - RVFI->getVarArgsSaveSize(), MachineInstr::FrameSetup);
-//    adjustReg(MBB, MBBI, DL, FPReg, SPReg, StackSize, MachineInstr::FrameSetup);
+    adjustReg(MBB, MBBI, DL, FPReg, SPReg, 0, MachineInstr::FrameSetup);
 
     // Emit ".cfi_def_cfa $fp, 0"
     unsigned CFIIndex = MF.addFrameInst(MCCFIInstruction::createDefCfa(
