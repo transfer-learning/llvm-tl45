@@ -755,6 +755,7 @@ bool WebAssemblyLowerEmscriptenEHSjLj::runEHOnFunction(Function &F) {
     auto *II = dyn_cast<InvokeInst>(BB.getTerminator());
     if (!II)
       continue;
+    Changed = true;
     LandingPads.insert(II->getLandingPadInst());
     IRB.SetInsertPoint(II);
 
@@ -795,6 +796,7 @@ bool WebAssemblyLowerEmscriptenEHSjLj::runEHOnFunction(Function &F) {
       auto *RI = dyn_cast<ResumeInst>(&I);
       if (!RI)
         continue;
+      Changed = true;
 
       // Split the input into legal values
       Value *Input = RI->getValue();
@@ -819,6 +821,7 @@ bool WebAssemblyLowerEmscriptenEHSjLj::runEHOnFunction(Function &F) {
         continue;
       if (Callee->getIntrinsicID() != Intrinsic::eh_typeid_for)
         continue;
+      Changed = true;
 
       IRB.SetInsertPoint(CI);
       CallInst *NewCI =
@@ -834,7 +837,7 @@ bool WebAssemblyLowerEmscriptenEHSjLj::runEHOnFunction(Function &F) {
     if (auto *LPI = dyn_cast<LandingPadInst>(I))
       LandingPads.insert(LPI);
   }
-  Changed = !LandingPads.empty();
+  Changed |= !LandingPads.empty();
 
   // Handle all the landingpad for this function together, as multiple invokes
   // may share a single lp
