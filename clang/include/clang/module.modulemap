@@ -61,6 +61,7 @@ module Clang_Basic {
   textual header "Basic/Sanitizers.def"
   textual header "Basic/TokenKinds.def"
   textual header "Basic/X86Target.def"
+  textual header "Basic/BuiltinsTL45.def"
 
   module * { export * }
 }

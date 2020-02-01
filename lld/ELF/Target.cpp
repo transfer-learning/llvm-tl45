@@ -87,6 +87,8 @@ TargetInfo *getTarget() {
     return getSPARCV9TargetInfo();
   case EM_X86_64:
     return getX86_64TargetInfo();
+  case EM_TL45:
+    return getTL45TargetInfo();
   }
   llvm_unreachable("unknown target machine");
 }
