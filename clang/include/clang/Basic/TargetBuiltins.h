@@ -159,7 +159,18 @@ namespace clang {
     };
   }
 
-  /// XCore builtins
+
+  /// TL45 builtins
+  namespace TL45 {
+    enum {
+      LastTIBuiltin = clang::Builtin::FirstTSBuiltin-1,
+#define BUILTIN(ID, TYPE, ATTRS) BI##ID,
+#include "clang/Basic/BuiltinsTL45.def"
+      LastTSBuiltin
+    };
+  }
+
+/// XCore builtins
   namespace XCore {
     enum {
         LastTIBuiltin = clang::Builtin::FirstTSBuiltin-1,
