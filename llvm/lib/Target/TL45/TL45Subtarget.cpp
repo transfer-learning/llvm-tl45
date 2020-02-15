@@ -14,3 +14,11 @@ TL45Subtarget::TL45Subtarget(const Triple &TT, const StringRef CPU, const String
   TL45GenSubtargetInfo(TT, CPU, FS),
   TLInfo(TM, *this),
   FrameLowering(*this, /* Alignment in units of memory */ 4) {}
+
+const SelectionDAGTargetInfo *TL45Subtarget::getSelectionDAGInfo() const {
+  return &TSInfo;
+}
+
+void TL45Subtarget::anchor() {
+
+}
