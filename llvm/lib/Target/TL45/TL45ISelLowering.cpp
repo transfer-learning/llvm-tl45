@@ -43,8 +43,6 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
 
   setOperationAction(ISD::GlobalAddress, MVT::i32, Custom);
 
-  setOperationAction(ISD::BRCOND, MVT::i32, Expand);
-
   // Parts Shifting
   setOperationAction(ISD::SHL_PARTS, MVT::i32, Expand);
   setOperationAction(ISD::SRA_PARTS, MVT::i32, Expand);
@@ -67,8 +65,12 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
   setOperationAction(ISD::UDIVREM, MVT::i32, Expand);
   setOperationAction(ISD::UREM, MVT::i32, Expand);
 
+
+  setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BR_CC, MVT::Other, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
+  setOperationAction(ISD::BRIND, MVT::Other, Expand);
+  setOperationAction(ISD::BRIND, MVT::i32, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Custom);
@@ -100,8 +102,6 @@ SDValue TL45TargetLowering::LowerOperation(SDValue Op,
       report_fatal_error("unimplemented operand");
     case ISD::BR_CC:
       return lowerBrCc(Op, DAG);
-//  case ISD::BR:
-//    return lowerBr(Op, DAG);
     case ISD::SELECT:
       return lowerSELECT(Op, DAG);
     case ISD::SELECT_CC:
@@ -131,7 +131,8 @@ void TL45TargetLowering::analyzeInputArgs(
     if (IsRet) {
       // caller interpreting returned values
       if (RetCC_TL45(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags, CCInfo)) {
-        LLVM_DEBUG(dbgs() << "InputArg #" << i << " has unhandled type "
+        LLVM_DEBUG(dbgs() << "InputArg #" << i << "/" << NumArgs
+                          << " has unhandled type "
                           << EVT(ArgVT).getEVTString() << '\n');
         llvm_unreachable(nullptr);
       }
@@ -160,14 +161,16 @@ void TL45TargetLowering::analyzeOutputArgs(
     if (IsRet) {
       // callee emitting return values
       if (RetCC_TL45(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags, CCInfo)) {
-        LLVM_DEBUG(dbgs() << "OutputArg #" << i << " has unhandled type "
+        LLVM_DEBUG(dbgs() << "OutputArg #" << i << "/" << NumArgs
+                          << " has unhandled type "
                           << EVT(ArgVT).getEVTString() << "\n");
         llvm_unreachable(nullptr);
       }
     } else {
       // caller emitting args
       if (CC_TL45(i, ArgVT, ArgVT, CCValAssign::Full, ArgFlags, CCInfo)) {
-        LLVM_DEBUG(dbgs() << "OutputArg #" << i << " has unhandled type "
+        LLVM_DEBUG(dbgs() << "CC_TL45: OutputArg #" << i << "/" << NumArgs
+                          << " has unhandled type "
                           << EVT(ArgVT).getEVTString() << "\n");
         llvm_unreachable(nullptr);
       }
@@ -214,6 +217,7 @@ static SDValue unpackFromRegLoc(SelectionDAG &DAG, SDValue Chain,
   }
 
   Register VReg = RegInfo.createVirtualRegister(RC);
+  assert(VA.isRegLoc() && "Va is not LocReg");
   RegInfo.addLiveIn(VA.getLocReg(), VReg);
   Val = DAG.getCopyFromReg(Chain, DL, VReg, LocVT);
 
@@ -233,10 +237,6 @@ static SDValue convertValVTToLocVT(SelectionDAG &DAG, SDValue Val,
     case CCValAssign::Full:
       break;
     case CCValAssign::BCvt:
-      //      if (VA.getLocVT() == MVT::i64 && VA.getValVT() == MVT::f32) {
-      //        Val = DAG.getNode(RISCVISD::FMV_X_ANYEXTW_RV64, DL, MVT::i64,
-      //        Val); break;
-      //      }
       Val = DAG.getNode(ISD::BITCAST, DL, LocVT, Val);
       break;
   }
@@ -450,33 +450,30 @@ TL45TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   for (unsigned i = 0, e = RVLocs.size(); i < e; ++i) {
     SDValue Val = OutVals[i];
     CCValAssign &VA = RVLocs[i];
-    assert(VA.isRegLoc() && "Can only return in registers!");
 
-    if (VA.getLocVT() == MVT::i32 && VA.getValVT() == MVT::f64) {
-      // Handle returning f64 on RV32D with a soft float ABI.
-      llvm_unreachable("not supported");
-      //      assert(VA.isRegLoc() && "Expected return via registers");
-      //      SDValue SplitF64 = DAG.getNode(RISCVISD::SplitF64, DL,
-      //                                     DAG.getVTList(MVT::i32, MVT::i32),
-      //                                     Val);
-      //      SDValue Lo = SplitF64.getValue(0);
-      //      SDValue Hi = SplitF64.getValue(1);
-      //      Register RegLo = VA.getLocReg();
-      //      Register RegHi = RegLo + 1;
-      //      Chain = DAG.getCopyToReg(Chain, DL, RegLo, Lo, Glue);
-      //      Glue = Chain.getValue(1);
-      //      RetOps.push_back(DAG.getRegister(RegLo, MVT::i32));
-      //      Chain = DAG.getCopyToReg(Chain, DL, RegHi, Hi, Glue);
-      //      Glue = Chain.getValue(1);
-      //      RetOps.push_back(DAG.getRegister(RegHi, MVT::i32));
-    } else {
-      // Handle a 'normal' return.
-      Val = convertValVTToLocVT(DAG, Val, VA, DL);
+    Val = convertValVTToLocVT(DAG, Val, VA, DL);
+    if (VA.isRegLoc()) {
+      // Return value should store to a register
       Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Glue);
 
       // Guarantee that all emitted copies are stuck together.
       Glue = Chain.getValue(1);
       RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
+    } else if (VA.isMemLoc()) {
+      llvm_unreachable("Broken2");
+      // Store into stack slot
+      EVT PtrVT = getPointerTy(DAG.getDataLayout());
+      SDValue StackPtr = DAG.getCopyFromReg(Chain, DL, TL45::sp, PtrVT);
+      SDValue Address =
+              DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
+                          DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+      SDValue RetValue = DAG.getStore(Chain, DL, Val, Address, MachinePointerInfo());
+      RetOps.push_back(RetValue);
+    } else {
+      LLVM_DEBUG(dbgs() << "Trying to return VAType: "
+                        << EVT(VA.getLocVT()).getEVTString()
+                        << "\n");
+      llvm_unreachable("Unsupported Return Value / Location");
     }
   }
 
@@ -582,7 +579,6 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
   // Copy argument values to their designated locations.
   SmallVector<std::pair<Register, SDValue>, 8> RegsToPass;
   SmallVector<SDValue, 8> MemOpChains;
-  SDValue StackPtr;
   for (unsigned i = 0, j = 0, e = ArgLocs.size(); i != e; ++i) {
     CCValAssign &VA = ArgLocs[i];
     SDValue ArgValue = OutVals[i];
@@ -632,6 +628,7 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
                             "for passing parameters");
 
       // Work out the address of the stack slot.
+      SDValue StackPtr;
       if (!StackPtr.getNode())
         StackPtr = DAG.getCopyFromReg(Chain, DL, TL45::sp, PtrVT);
       SDValue Address =
@@ -703,11 +700,6 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
   // Emit the call.
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
 
-  //  if (IsTailCall) {
-  //    MF.getFrameInfo().setHasTailCall();
-  //    return DAG.getNode(RISCVISD::TAIL, DL, NodeTys, Ops);
-  //  }
-
   Chain = DAG.getNode(TL45ISD::CALL, DL, NodeTys, Ops);
   Glue = Chain.getValue(1);
   // ACTUAL CALL INSTRUCTION
@@ -724,17 +716,37 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
   analyzeInputArgs(MF, RetCCInfo, Ins, /*IsRet=*/true);
 
   // Copy all of the result registers out of their specified physreg.
-  for (auto &VA : RVLocs) {
+  for (size_t i = 0; i < RVLocs.size(); ++i) {
+    auto &VA = RVLocs[i];
     // Copy the value out
-    SDValue RetValue =
-            DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(), Glue);
-    // Glue the RetValue to the end of the call sequence
-    Chain = RetValue.getValue(1);
-    Glue = RetValue.getValue(2);
+    if (VA.isRegLoc()) {
+      SDValue RetValue =
+              DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(),
+                                 Glue);
+      // Glue the RetValue to the end of the call sequence
+      Chain = RetValue.getValue(1);
+      Glue = RetValue.getValue(2);
 
-    RetValue = convertLocVTToValVT(DAG, RetValue, VA, DL);
+      // No support for Indirect
+      RetValue = convertLocVTToValVT(DAG, RetValue, VA, DL);
 
-    InVals.push_back(RetValue);
+      InVals.push_back(RetValue);
+    } else if (VA.isMemLoc()) {
+      llvm_unreachable("Broken");
+      assert(VA.getLocVT() == MVT::i32 &&
+             "Stack Slot return is not 32 bit aligned");
+      SDValue stackPtr = DAG.getCopyFromReg(Chain, DL, TL45::sp, PtrVT);
+      SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, stackPtr,
+                                    DAG.getIntPtrConstant(VA.getLocMemOffset(),
+                                                          DL));
+
+      SDValue RetValue = DAG.getLoad(VA.getLocVT(), DL, Chain, Address,
+                                     MachinePointerInfo());
+
+      InVals.push_back(RetValue);
+    } else {
+      llvm_unreachable("Unexpected RVLoc type");
+    }
   }
 
   return Chain;
@@ -1236,18 +1248,6 @@ TL45TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   switch (MI.getOpcode()) {
     default:
       llvm_unreachable("Unexpected instr type to insert");
-//  case RISCV::ReadCycleWide:
-//    assert(!Subtarget.is64Bit() &&
-//           "ReadCycleWrite is only to be used on riscv32");
-//    return emitReadCycleWidePseudo(MI, BB);
-//  case RISCV::Select_GPR_Using_CC_GPR:
-//  case RISCV::Select_FPR32_Using_CC_GPR:
-//  case RISCV::Select_FPR64_Using_CC_GPR:
-//    return emitSelectPseudo(MI, BB);
-//  case RISCV::BuildPairF64Pseudo:
-//    return emitBuildPairF64Pseudo(MI, BB);
-//  case RISCV::SplitF64Pseudo:
-//    return emitSplitF64Pseudo(MI, BB);
     case TL45::Select_GRRegs_Using_CC_GRRegs:
       return emitSelectPseudo(MI, BB);
 
@@ -1257,11 +1257,6 @@ TL45TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 bool
 TL45TargetLowering::shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy,
                                           EVT NewVT) const {
-  // we don't support i16 loads right now, so don't merge into one.
-//  if (NewVT == MVT::i16) {
-//    return false;
-//  }
-
   return TargetLoweringBase::shouldReduceLoadWidth(Load, ExtTy, NewVT);
 }
 
@@ -1269,4 +1264,5 @@ bool TL45TargetLowering::canMergeStoresTo(unsigned AS, EVT MemVT,
                                           const SelectionDAG &DAG) const {
   return true; // MemVT == MVT::i8 || MemVT == MVT::i32;
 }
+
 

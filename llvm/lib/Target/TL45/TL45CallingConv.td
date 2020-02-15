@@ -14,29 +14,22 @@
 //===----------------------------------------------------------------------===//
 def RetCC_TL45 : CallingConv<[
   // i32 are returned in registers v0
-  CCIfType<[i32], CCAssignToReg<[r1]>>,
-
-  // Integer values get stored in stack slots that are 4 bytes in
-  // size and 4-byte aligned.
-  CCIfType<[i32], CCAssignToStack<4, 4>>
+  CCIfType<[i8], CCPromoteToType<i32>>,
+  CCIfType<[i16], CCPromoteToType<i32>>,
+  CCIfType<[i32], CCAssignToReg<[r1, r2, r3, r4, r5]>>,
+  CCIfType<[i32], CCAssignToStack<4,4>>
 ]>;
 
 //===----------------------------------------------------------------------===//
 // TL45 Argument Calling Conventions
 //===----------------------------------------------------------------------===//
 def CC_TL45 : CallingConv<[
-  CCIfVarArg<CCAssignToStack<4,4>>,
-  // Promote i8 arguments to i32.
+  CCIfByVal<CCPassByVal<4,4>>,
   CCIfType<[i8], CCPromoteToType<i32>>,
-  // Promote i16 arguments to i32.
   CCIfType<[i16], CCPromoteToType<i32>>,
-  // The first 3 integer arguments are passed in integer registers.
-  CCIfType<[i32], CCAssignToReg<[r2, r3, r4, r5, r6]>>,
-  CCIfType<[i8], CCAssignToStack<1,1>>,
-  CCIfType<[i16], CCAssignToStack<2,2>>,
-  // Integer values get stored in stack slots that are 4 bytes in
-  // size and 4-byte aligned.
-  CCIfType<[i32], CCAssignToStack<4, 4>>
+  CCIfType<[i32], CCAssignToReg<[r6, r7, r8, r9]>>,
+  CCIfType<[i32], CCAssignToStack<4,4>>,
+  CCIfVarArg<CCAssignToStack<4,4>>
 ]>;
 
-def CC_Save : CalleeSavedRegs<(add r7, r8, r9, r10, r11, r12, r13, bp)>;
+def CC_Save : CalleeSavedRegs<(add r10, r11, r12, r13, bp)>;

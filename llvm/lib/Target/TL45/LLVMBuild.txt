@@ -40,6 +40,8 @@ required_libraries =
     Core
     MC
     SelectionDAG
+    GlobalISel
+    TransformUtils
     TL45Desc
     TL45Info
     TL45AsmParser
