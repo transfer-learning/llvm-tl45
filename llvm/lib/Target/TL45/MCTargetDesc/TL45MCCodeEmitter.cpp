@@ -82,7 +82,6 @@ unsigned TL45MCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
   TL45::Fixups FixupKind = TL45::fixup_tl45_invalid;
   bool RelaxCandidate = false;
   if (Kind == MCExpr::Target) {
-    Expr->dump();
     llvm_unreachable("todo, support MCExpr::Target");
 //    const TL45MCExpr *RVExpr = cast<TL45MCExpr>(Expr);
 //
@@ -182,7 +181,6 @@ unsigned TL45MCCodeEmitter::getJumpTargetOpValue(const MCInst &MI, unsigned OpNo
   TL45::Fixups FixupKind = TL45::fixup_tl45_invalid;
   bool RelaxCandidate = false;
   if (Kind == MCExpr::Target) {
-    Expr->dump();
     llvm_unreachable("todo, support MCExpr::Target");
 //    const TL45MCExpr *RVExpr = cast<TL45MCExpr>(Expr);
 //
