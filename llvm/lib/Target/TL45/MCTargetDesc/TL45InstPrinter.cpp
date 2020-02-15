@@ -64,7 +64,6 @@ static void printExpr(const MCExpr *Expr, raw_ostream &OS) {
       OS << dyn_cast<MCConstantExpr>(Expr)->getValue();
       break;
     default:
-      Expr->dump();
       llvm_unreachable("Can't print this MCExpr");
   }
 //  if SRE->getSymbol().
