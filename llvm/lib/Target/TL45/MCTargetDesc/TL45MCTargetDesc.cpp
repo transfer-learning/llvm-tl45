@@ -93,10 +93,6 @@ extern "C" void LLVMInitializeTL45TargetMC() {
 // Register the MC asm info.
   RegisterMCAsmInfoFn X(TheTL45Target, createTL45MCAsmInfo);
 
-// Register the MC codegen info.
-//  TargetRegistry::RegisterMCCodeGenInfo(TheTL45Target,
-//                                        createTL45MCCodeGenInfo);
-
 // Register the MC instruction info.
   TargetRegistry::RegisterMCInstrInfo(TheTL45Target,
 createTL45MCInstrInfo);
@@ -113,10 +109,6 @@ TargetRegistry::RegisterMCInstPrinter(TheTL45Target,
 // Register the ASM Backend.
 TargetRegistry::RegisterMCAsmBackend(TheTL45Target,
 createTL45AsmBackend);
-
-// Register the assembly streamer.
-//TargetRegistry::RegisterAsmStreamer(TheTL45Target,
-//createMCAsmStreamer);
 
 // Register the object streamer.
 TargetRegistry::RegisterELFStreamer(TheTL45Target, createTL45ELFStreamer);

@@ -18,13 +18,8 @@ class LLVM_LIBRARY_VISIBILITY TL45TargetInfo : public TargetInfo {
 //  static const Builtin::Info BuiltinInfo[];
 public:
   TL45TargetInfo(const llvm::Triple &Triple, const TargetOptions &Opts) : TargetInfo(Triple) {
-    resetDataLayout("E" // Big Endian
-                    "-m:e" // Mangling ELF
-                    "-S32" // Stack Align 32bits
-                    "-p:32:32:32" // Pointer Type 32bits, 32bits aligned, (Not sure what that last is for)
-                    "-i32:32:32"
-                    "-a:32:32" // Address 32bits 32bits aligned
-                    "-n32" // Native Int 32
+    resetDataLayout(
+            "E-m:e-p:32:32-i8:8-i16:16-i32:32-i64:32-a:0:32-n8:16:32-S32"
     );
     PointerWidth = PointerAlign = 32;
     BoolWidth = BoolAlign = 8;

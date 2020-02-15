@@ -28,7 +28,7 @@ TL45TargetMachine::TL45TargetMachine(const llvm::Target &T, const llvm::Triple &
                                    Optional<llvm::Reloc::Model> RM,
                                    Optional<llvm::CodeModel::Model> CM, llvm::CodeGenOpt::Level OL, bool JIT) :
         LLVMTargetMachine(T,
-                "E-m:e-S32-p:32:32:32-i32:32:32-a:32:32-n32",
+                          "E-m:e-p:32:32-i8:8-i16:16-i32:32-i64:32-a:0:32-n8:16:32-S32",
                 TT, CPU, FS, Options, RM.getValueOr(Reloc::Model::Static),
                 CM.getValueOr(CodeModel::Model::Tiny), OL
         ), TLOF(make_unique<TargetLoweringObjectFileELF>()), DefaultSubtarget(TT, CPU, FS, *this) {

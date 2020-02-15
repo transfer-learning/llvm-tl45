@@ -6846,6 +6846,14 @@ ABIArgInfo SystemZABIInfo::classifyArgumentType(QualType Ty) const {
   return ABIArgInfo::getDirect(nullptr);
 }
 
+namespace {
+class TL45TargetCodeGenInfo : public TargetCodeGenInfo {
+public:
+  TL45TargetCodeGenInfo(CodeGenTypes &CGT)
+    : TargetCodeGenInfo(new DefaultABIInfo(CGT)) {}
+};
+}
+
 //===----------------------------------------------------------------------===//
 // MSP430 ABI Implementation
 //===----------------------------------------------------------------------===//
@@ -9747,6 +9755,8 @@ const TargetCodeGenInfo &CodeGenModule::getTargetCodeGenInfo() {
 
   case llvm::Triple::msp430:
     return SetCGInfo(new MSP430TargetCodeGenInfo(Types));
+  case llvm::Triple::tl45:
+    return SetCGInfo(new TL45TargetCodeGenInfo(Types));
 
   case llvm::Triple::riscv32:
   case llvm::Triple::riscv64: {

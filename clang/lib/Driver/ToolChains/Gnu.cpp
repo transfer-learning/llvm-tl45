@@ -1997,6 +1997,9 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
   static const char *const MSP430LibDirs[] = {"/lib"};
   static const char *const MSP430Triples[] = {"msp430-elf"};
 
+  static const char *const TL45LibDirs[] = {"/lib"};
+  static const char *const TL45Triples[] = {"tl45-unknown-unknown"};
+
   static const char *const PPCLibDirs[] = {"/lib32", "/lib"};
   static const char *const PPCTriples[] = {
       "powerpc-linux-gnu", "powerpc-unknown-linux-gnu", "powerpc-linux-gnuspe",
@@ -2232,6 +2235,10 @@ void Generic_GCC::GCCInstallationDetector::AddDefaultGCCPrefixes(
   case llvm::Triple::msp430:
     LibDirs.append(begin(MSP430LibDirs), end(MSP430LibDirs));
     TripleAliases.append(begin(MSP430Triples), end(MSP430Triples));
+    break;
+  case llvm::Triple::tl45:
+    LibDirs.append(begin(TL45LibDirs), end(TL45LibDirs));
+    TripleAliases.append(begin(TL45Triples), end(TL45Triples));
     break;
   case llvm::Triple::ppc:
     LibDirs.append(begin(PPCLibDirs), end(PPCLibDirs));
@@ -2583,6 +2590,7 @@ bool Generic_GCC::IsIntegratedAssemblerDefault() const {
   case llvm::Triple::mips64:
   case llvm::Triple::mips64el:
   case llvm::Triple::msp430:
+  case llvm::Triple::tl45:
     return true;
   case llvm::Triple::sparc:
   case llvm::Triple::sparcel:

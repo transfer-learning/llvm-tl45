@@ -11,8 +11,6 @@ clang/lib/Basic/Targets/MSP430.cpp
 clang/lib/Basic/Targets/MSP430.h
 clang/lib/Basic/CMakeLists.txt
 clang/lib/CodeGen/TargetInfo.cpp
-clang/lib/Sema/SemaDeclAttr.cpp
-clang/bindings/python/tests/cindex/test_type.py
 clang/include/clang/Basic/Attr.td
 clang/include/clang/Basic/DiagnosticDriverKinds.td
 clang/include/clang/Basic/MSP430Target.def
@@ -27,10 +25,6 @@ lld/ELF/Target.h
 lld/ELF/Target.cpp
 lld/ELF/CMakeLists.txt
 llvm/cmake/config-ix.cmake
-llvm/utils/gn/secondary/clang/lib/Driver/BUILD.gn
-llvm/utils/gn/secondary/clang/lib/Basic/BUILD.gn
-llvm/utils/gn/secondary/lld/ELF/BUILD.gn
-llvm/utils/gn/TODO.txt
 llvm/utils/vim/syntax/llvm.vim
 llvm/lib/ObjectYAML/ELFYAML.cpp
 llvm/lib/Object/ELF.cpp

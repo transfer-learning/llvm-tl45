@@ -25,7 +25,6 @@ class TL45Subtarget : public TL45GenSubtargetInfo {
 //	TL45FrameLowering FrameLowering;
 //	InstrItineraryData InstrItins;
   TL45FrameLowering FrameLowering;
-  TL45ABI::ABI TargetABI = TL45ABI::ABI_Unknown;
 
 public:
 	TL45Subtarget(const Triple &TT, const StringRef CPU, const StringRef FS, const TL45TargetMachine &TM);
@@ -47,16 +46,7 @@ public:
 	const TL45FrameLowering *getFrameLowering() const override {
 		return &FrameLowering;
 	}
-//
-//	const TL45SelectionDAGInfo *getSelectionDAGInfo() const override {
-//		return &TSInfo;
-//	}
-//
-//	const DataLayout *getDataLayout() const override { return &DL; }
-//
 	void ParseSubtargetFeatures(StringRef CPU, StringRef FS);
-
-  TL45ABI::ABI getTargetABI() const { return TargetABI; }
 };
 
 }

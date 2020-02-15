@@ -84,6 +84,8 @@
 #if LLVM_ON_UNIX
 #include <unistd.h> // getpid
 #include <sysexits.h> // EX_IOERR
+#include <ToolChains/TL45.h>
+
 #endif
 
 using namespace clang::driver;
@@ -4719,6 +4721,9 @@ const ToolChain &Driver::getToolChain(const ArgList &Args,
       case llvm::Triple::msp430:
         TC =
             llvm::make_unique<toolchains::MSP430ToolChain>(*this, Target, Args);
+        break;
+      case llvm::Triple::tl45:
+        TC = llvm::make_unique<toolchains::TL45ToolChain>(*this, Target, Args);
         break;
       case llvm::Triple::riscv32:
       case llvm::Triple::riscv64:
