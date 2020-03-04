@@ -110,8 +110,6 @@ let isCommutable = 1 in {
   defm UDIV: ALUTypeInstr<0x18, "udiv", udiv>;
 
 let mode = 0b001, isAsCheapAsAMove = 1 in {
-  def XCHG : RRTypeInstr<0x4, "xchg", []>;
-
   let Defs = [eflags] in
     def NOT : RRTypeInstr<0x9, "not", []>;
 }
