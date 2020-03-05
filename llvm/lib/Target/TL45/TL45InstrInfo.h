@@ -98,6 +98,10 @@ public:
   unsigned removeBranch(MachineBasicBlock &MBB,
                         int *BytesRemoved = nullptr) const override;
 
+  unsigned int
+  insertIndirectBranch(MachineBasicBlock &MBB, MachineBasicBlock &NewDestBB, const DebugLoc &DL, int64_t BrOffset,
+                       RegScavenger *RS) const override;
+
 };
 } // namespace llvm
 #endif

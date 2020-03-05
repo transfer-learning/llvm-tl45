@@ -137,12 +137,12 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   default:
     return false;
-  case TL45::JMPI: {
-    unsigned regNo = scavenger.scavengeRegisterBackwards(TL45::GRRegsRegClass, MI, true, 4);
-    expandPostRAJmp_H(MBB, MI, DL, regNo, MI.getOperand(0));
-    expandPostRAJmp_L(MBB, MI, DL, regNo, TL45::JMP, MI.getOperand(0));
-    break;
-  }
+//  case TL45::JMPI: {
+//    unsigned regNo = scavenger.scavengeRegisterBackwards(TL45::GRRegsRegClass, MI, true, 4);
+//    expandPostRAJmp_H(MBB, MI, DL, regNo, MI.getOperand(0));
+//    expandPostRAJmp_L(MBB, MI, DL, regNo, TL45::JMP, MI.getOperand(0));
+//    break;
+//  }
   case TL45::CMP_JMP: {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
@@ -222,6 +222,12 @@ void TL45InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
       .addReg(DestReg)
       .addReg(SrcReg)
       .addReg(TL45::r0);
+}
+
+unsigned int
+TL45InstrInfo::insertIndirectBranch(MachineBasicBlock &MBB, MachineBasicBlock &NewDestBB, const DebugLoc &DL,
+                                    int64_t BrOffset, RegScavenger *RS) const {
+  return TargetInstrInfo::insertIndirectBranch(MBB, NewDestBB, DL, BrOffset, RS);
 }
 
 unsigned TL45InstrInfo::insertBranch(
