@@ -43,7 +43,12 @@ def TL45imm32 : Operand<i32>, ImmLeaf<i32, [{return isInt<32>(Imm);}]> {
 
 def jmptarget : Operand<OtherVT> {
   let EncoderMethod = "getJumpTargetOpValue";
-  // let ParserMatchClass = MipsJumpTargetAsmOperand;
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isInt<16>(Imm);
+    return MCOp.isBareSymbolRef();
+   }];
 }
 
 //===----------------------------------------------------------------------===//
