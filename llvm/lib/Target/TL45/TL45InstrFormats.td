@@ -216,23 +216,23 @@ class CallITypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : Inst
   // let isCommutable = 1;
 }
 
-class JRTypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$dst), opcode, opcodestr, "$dst", pattern> {
+class JRTypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$dst, jmptarget_l:$imm), opcode, opcodestr, "$dst, $imm", pattern> {
   bits<4> dst;
-  bits<3> mode = 0b101;
+  bits<16> imm;
+  bits<3> mode = 0b100;
 
   let Inst{26-24} = mode;
   let Inst{23-20} = flag;
-  let Inst{19-16} = 0b0000;
-  let Inst{15-12} = dst;
-  let Inst{11-0} = 0; // padding
+  let Inst{19-16} = dst;
+  let Inst{15-0} = imm;
   // let isCommutable = 1;
-  let isIndirectBranch = 1;
+  // let isIndirectBranch = 1;
 }
 
 class JITypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins jmptarget:$imm), opcode, opcodestr, "$imm", pattern> {
   bits<16> imm;
   bits<3> mode = 0b101;
-
+  let isPseudo = 1;
   let Inst{26-24} = mode;
   let Inst{23-20} = flag;
   let Inst{19-16} = 0b0000;
@@ -254,32 +254,4 @@ class NoneTypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : InstT
   let Inst{19-0} = 0;
   // let isCommutable = 1;
 }
-
-
-/*
-class RTypeInstr<bits<4> opcode, string opcodestr, list<dag> pattern> : InstTL45<(outs GRRegs:$dr), (ins GRRegs:$sr1, GRRegs:$sr2), opcode, opcodestr, "$dr, $sr1, $sr2", pattern> {
-  bits<4> dr;
-  bits<4> sr1;
-  bits<4> sr2;
-  let Inst{27-24} = dr;
-  let Inst{23-20} = sr1;
-  let Inst{3-0} = sr2;
-  let Inst{19-4} = 0; // padding
-  let isCommutable = 1;
-}
-
-class SKPTypeInstr<bits<4> opcode, bits<4> mode, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$sr1, GRRegs:$sr2), opcode, opcodestr, "$sr1, $sr2", []> {
-    bits<4> sr1;
-    bits<4> sr2;
-    let Inst{27-24} = mode;
-    let Inst{23-20} = sr1;
-    let Inst{3-0} = sr2;
-    let Inst{19-4} = 0; // padding
-    let isBranch = 1;
-    let isCompare = 1;
-}
-
-class ITypeInstr<bits<4> opcode, dag outs, dag ins, string asmstr, string argstr, list<dag> pattern> : InstTL45<outs, ins, opcode, asmstr, argstr, pattern> {
-}
-*/
 

@@ -43,6 +43,7 @@ BitVector TL45RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
 
 void TL45RegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II, int SPAdj, unsigned FIOperandNum,
                                              RegScavenger *RS) const {
+  assert(SPAdj == 0 && "Need to handle SPAdj");
   MachineInstr &MI = *II;
   MachineFunction &MF = *MI.getParent()->getParent();
 

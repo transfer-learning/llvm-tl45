@@ -47,6 +47,13 @@ public:
 
   static bool validImmediate(unsigned Opcode, unsigned Reg, int64_t Amount);
 
+  // Lower a Long Jump
+  void expandPostRAJmp_H(MachineBasicBlock &MBB, MachineBasicBlock::iterator loc, const DebugLoc &DL,
+      unsigned RegNo, MachineOperand &TargetOp) const;
+
+  void expandPostRAJmp_L(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, const DebugLoc &DL,
+                         unsigned BaseR, unsigned JmpOp, MachineOperand &TargetOp) const;
+
   // Generates instructions to conditionally execute the next instruction only
   // if the comparison (a CC b) was true. Returns number of instructions added
   unsigned resolveComparison(MachineBasicBlock &MBB, MachineBasicBlock::iterator I, const DebugLoc &DL,
