@@ -526,6 +526,7 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
   MVT XLenVT = MVT::i32;
 
   MachineFunction &MF = DAG.getMachineFunction();
+  auto &MRI = MF.getRegInfo();
 
   // Analyze the operands of the call, assigning locations to each operand.
   SmallVector<CCValAssign, 16> ArgLocs;
@@ -675,6 +676,9 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
   // The first call operand is the chain and the second is the target address.
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
+//  auto reg = MRI.createVirtualRegister(&TL45::GRRegsRegClass);
+  auto LdAH = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Callee), 0);
+  Ops.push_back(LdAH);
   Ops.push_back(Callee);
 
   // Add argument registers to the end of the list so that they are
@@ -774,7 +778,7 @@ SDValue TL45TargetLowering::getAddr(NodeTy *N, SelectionDAG &DAG,
   SDValue r0 = DAG.getRegister(TL45::r0, MVT::i32);
 
   SDValue Addr = getTargetNode(N, DL, Ty, DAG, 0);
-  return SDValue(DAG.getMachineNode(TL45::ADDI, DL, Ty, r0, Addr), 0);
+  return SDValue(DAG.getMachineNode(TL45::ADD32, DL, Ty, r0, Addr), 0);
 }
 
 SDValue TL45TargetLowering::lowerGlobalAddress(SDValue Op,

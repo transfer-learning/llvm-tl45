@@ -46,7 +46,7 @@ public:
 
   void ParseSubtargetFeatures(StringRef CPU, StringRef FS);
 
-  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override;;
+  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override;
 
 };
 }

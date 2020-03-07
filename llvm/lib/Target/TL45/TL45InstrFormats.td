@@ -183,7 +183,7 @@ class CallTypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : InstT
   let Inst{15-0} = imm;
   // let isCommutable = 1;
 }
-
+/*
 class CallRTypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$base), opcode, opcodestr, "$base", pattern> {
   bits<4> base;
   bits<16> imm = 0;
@@ -215,6 +215,7 @@ class CallITypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : Inst
   let Inst{15-0} = imm;
   // let isCommutable = 1;
 }
+*/
 
 class JRTypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$dst, jmp_target_l:$off), opcode, opcodestr, "$dst, $off", pattern> {
   bits<4> dst;

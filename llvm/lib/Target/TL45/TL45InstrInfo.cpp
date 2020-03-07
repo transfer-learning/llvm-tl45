@@ -2,6 +2,7 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include <llvm/CodeGen/SelectionDAGNodes.h>
+#include <llvm/CodeGen/RegisterScavenging.h>
 
 #include "TL45InstrInfo.h"
 #include "MCTargetDesc/TL45MCTargetDesc.h"
@@ -159,42 +160,25 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     MachineOperand &src = MI.getOperand(1);
     MachineOperand &imm = MI.getOperand(2);
 
-    // assert(src.getReg() == TL45::r0 && "src must be r0");
-    assert(imm.isImm() && "imm must be immediate");
+    if (imm.isImm()) {
+      uint64_t val = (uint32_t) imm.getImm();
 
-    uint64_t val = (uint32_t) imm.getImm();
+      uint64_t low = val & 0xffffu;
+      uint64_t high = (val >> 16u) & 0xffffu;
 
-    uint64_t low = val & 0xffffu;
-    uint64_t high = (val >> 16u) & 0xffffu;
+      BuildMI(MBB, MI, DL, get(TL45::ADDIZ)).add(dst).add(src).addImm(low);
+      BuildMI(MBB, MI, DL, get(TL45::ADDHI)).add(dst).add(dst).addImm(high);
 
-    BuildMI(MBB, MI, DL, get(TL45::ADDIZ)).add(dst).add(src).addImm(low);
-    BuildMI(MBB, MI, DL, get(TL45::ADDHI)).add(dst).add(dst).addImm(high);
+    } else if (imm.isGlobal()) {
+      auto gVal = imm.getGlobal();
+      BuildMI(MBB, MI, DL, get(TL45::ADDIZ)).add(dst).add(src).addGlobalAddress(gVal);
+      BuildMI(MBB, MI, DL, get(TL45::ADDHI)).add(dst).add(dst).addGlobalAddress(gVal);
+    } else {
+      report_fatal_error("ADD32 requires imm or global value");
+    }
+
     break;
-  }
-
-//  case TL45::JMP: {
-//    MachineOperand &op = MI.getOperand(0);
-//    if (op.isMBB()) {
-//      MachineBasicBlock *dst = op.getMBB();
-//      BuildMI(MBB, MI, DL, get(TL45::GOTO)).addMBB(dst);
-//    } else {
-//      int64_t dst = op.getImm();
-//      BuildMI(MBB, MI, DL, get(TL45::GOTO)).addImm(dst);
-//    }
-//    break;
-//  }
-//      case TL45::
-//  case TL45::PseudoCALL: {
-//    MachineOperand &op = MI.getOperand(0);
-//
-//    BuildMI(MBB, MI, DL, get(TL45::LEA)).addReg(TL45::at).add(op);
-//    BuildMI(MBB, MI, DL, get(TL45::JALR)).addReg(TL45::ra).addReg(TL45::at);
-//    break;
-//  }
-
-    //case TL45::PseudoRET: {
-    //  break;
-    //}
+  } // TL45::ADD32
   }
 
   MBB.erase(MI);
@@ -212,19 +196,14 @@ unsigned TL45InstrInfo::loadImmediate(unsigned FrameReg, int64_t Imm,
 
 bool TL45InstrInfo::validImmediate(unsigned Opcode, unsigned Reg,
                                    int64_t Amount) {
-  return isInt<20>(Amount);
-}
-
-bool TL45InstrInfo::isAsCheapAsAMove(const MachineInstr &MI) const {
-  const unsigned Opcode = MI.getOpcode();
   switch (Opcode) {
-  default:
-    break;
-//  case TL45::ADD:
-//    return (MI.getOperand(1).isReg() &&
-//            MI.getOperand(1).getReg() == TL45::zero);
+  case TL45::ADDHI:
+  case TL45::ADDIZ:
+    return isUInt<16>(Amount);
+  default: {
+    return isInt<16>(Amount);
   }
-  return MI.isAsCheapAsAMove();
+  }
 }
 
 void TL45InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -238,22 +217,51 @@ void TL45InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
       .addReg(TL45::r0);
 }
 
+/// Copied from header
+/// Insert branch code into the end of the specified MachineBasicBlock. The
+/// operands to this method are the same as those returned by AnalyzeBranch.
+/// This is only invoked in cases where AnalyzeBranch returns success. It
+/// returns the number of instructions inserted. If \p BytesAdded is non-null,
+/// report the change in code size from the added instructions.
+///
+/// It is also invoked by tail merging to add unconditional branches in
+/// cases where AnalyzeBranch doesn't apply because there was no original
+/// branch to analyze.  At least this much must be implemented, else tail
+/// merging needs to be disabled.
+///
+/// The CFG information in MBB.Predecessors and MBB.Successors must be valid
+/// before calling this function.
 unsigned TL45InstrInfo::insertBranch(
     MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
     ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
   if (BytesAdded)
     *BytesAdded = 0;
 
+  MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+  unsigned initial_vreg_count = MRI.getNumVirtRegs();
+
   if (Cond.empty()) {
+    // Unconditional Branch, so we build a LdAH and JMP
     assert(!FBB && "Unconditional branch with multiple successors!");
-    auto &MI = *BuildMI(&MBB, DL, get(TL45::JMPI)).addMBB(TBB);
+    RegScavenger scavenger;
+    unsigned ScratchReg = MRI.createVirtualRegister(&TL45::GRRegsRegClass);
+    auto FirstMI = BuildMI(&MBB, DL, get(TL45::ADDHI), ScratchReg).addReg(TL45::r0).addMBB(TBB);
+    BuildMI(&MBB, DL, get(TL45::JMP)).addReg(ScratchReg, RegState::Kill).addMBB(TBB);
+    scavenger.enterBasicBlockEnd(MBB);
+    auto SubReg = scavenger.scavengeRegisterBackwards(TL45::GRRegsRegClass, FirstMI->getIterator(), false, 0);
+    MRI.replaceRegWith(ScratchReg, SubReg);
+    if (initial_vreg_count == 0) {
+      MRI.clearVirtRegs();
+    }
+
     if (BytesAdded)
-      *BytesAdded += 4;
+      *BytesAdded += 8;
     return 1;
   }
 
   unsigned Count = 0;
 
+  report_fatal_error("Can't insert conditional branch yet");
   unsigned JmpOpc = Cond[0].getImm();
   if (JmpOpc == TL45::CMP_JMP || JmpOpc == TL45::CMPI_JMP) {
 
@@ -313,7 +321,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
                           SmallVectorImpl<MachineOperand> &Cond,
                           MachineBasicBlock::reverse_iterator LastInstI) {
   assert(getAnalyzableBrOpc(Opc) && "Not an analyzable branch");
-  int NumOp = Inst->getNumExplicitOperands();
+  unsigned NumOp = Inst->getNumExplicitOperands();
 
   // for both int and fp branches, the last explicit operand is the
   // MBB.
@@ -324,7 +332,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 
     Cond.push_back(MachineOperand::CreateImm(Inst->getOpcode()));
 
-    for (int i = 0; i < NumOp - 1; i++)
+    for (unsigned i = 0; i < NumOp - 1; i++)
       Cond.push_back(Inst->getOperand(i));
 
   } else {
@@ -382,7 +390,6 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                   SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
-  return true;
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.
@@ -435,6 +442,7 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
         llvm_unreachable("Unexpected Unconditional Branch");
         break;
       case TL45::JMPI: {
+        report_fatal_error("Found a JMPI while analyzing branches", false);
         TBB = LastInst->getOperand(0).getMBB();
         break;
       }

@@ -293,12 +293,14 @@ let isReturn = 1, isBarrier = 1, isTerminator = 1 in {
 */
 
 // TODO Long Call
-def : Pat<(tl45_call tglobaladdr:$func), (CALL r0, tglobaladdr:$func)>;
-def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
+// def : Pat<(tl45_call tglobaladdr:$func), (CALL ), tglobaladdr:$func)>;
+//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
 
-def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
+//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
 
-def : Pat<(tl45_call GRRegs:$func), (CALL GRRegs:$func, 0)>;
+// def: Pat<(tl45_ldah tglobaladdr:$addr), (LdAH jmp_target_h:$addr)>;
+
+def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
 
 // ADJCALLSTACKDOWN/UP
 let Defs = [sp], Uses = [sp] in {

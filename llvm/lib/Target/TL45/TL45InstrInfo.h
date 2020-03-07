@@ -65,8 +65,6 @@ public:
                             int FrameIndex, const TargetRegisterClass *RC,
                             const TargetRegisterInfo *TRI) const override;
 
-  bool isAsCheapAsAMove(const MachineInstr &MI) const override;
-
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                    const DebugLoc &DL, unsigned DestReg, unsigned SrcReg,
                    bool KillSrc) const override;
@@ -76,7 +74,7 @@ public:
   unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                         MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
                         const DebugLoc &DL,
-                        int *BytesAdded = nullptr) const override;
+                        int *BytesAdded) const override;
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override {
     // DUDE RISC LMAO
