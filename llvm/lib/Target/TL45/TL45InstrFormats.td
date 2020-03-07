@@ -216,17 +216,17 @@ class CallITypeInstr<bits<5> opcode, string opcodestr, list<dag> pattern> : Inst
   // let isCommutable = 1;
 }
 
-class JRTypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$dst), opcode, opcodestr, "$dst", pattern> {
+class JRTypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins GRRegs:$dst, jmp_target_l:$off), opcode, opcodestr, "$dst, $off", pattern> {
   bits<4> dst;
-  bits<3> mode = 0b101;
+  bits<16> off;
+  bits<3> mode = 0b100;
 
   let Inst{26-24} = mode;
   let Inst{23-20} = flag;
-  let Inst{19-16} = 0b0000;
-  let Inst{15-12} = dst;
-  let Inst{11-0} = 0; // padding
+  let Inst{19-16} = dst;
+  let Inst{15-0} = off;
   // let isCommutable = 1;
-  let isIndirectBranch = 1;
+  // let isIndirectBranch = 1;
 }
 
 class JITypeInstr<bits<5> opcode, bits<4> flag, string opcodestr, list<dag> pattern> : InstTL45<(outs), (ins jmptarget:$imm), opcode, opcodestr, "$imm", pattern> {

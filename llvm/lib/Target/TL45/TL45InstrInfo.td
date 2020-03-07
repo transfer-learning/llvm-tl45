@@ -26,6 +26,12 @@ def SDT_Call        : SDTypeProfile<0, -1, [SDTCisVT<0, i32>]>;
 // [cc, lhs, rhs, dest]
 def SDT_TL45CmpJmp     : SDTypeProfile<0, 4, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>]>;
 
+// [GRReg (base), jmp_target_l (offset)]
+def SDT_TL45BrOff : SDTypeProfile<0, 2, [SDTCisVT<0, i32>, SDTCisVT<1, OtherVT>]>;
+
+// LdAH: load Addr High
+def SDT_TL45LdAH: SDTypeProfile<1, 1, [ SDTCisVT<1, OtherVT>]>;
+
 def SDT_TL45SelectCC : SDTypeProfile<1, 5, [SDTCisSameAs<1, 2>,
                                              SDTCisSameAs<0, 4>,
                                              SDTCisSameAs<4, 5>]>;
@@ -48,6 +54,9 @@ def tl45_ret            : SDNode<"TL45ISD::RET", SDTNone,
 
 def tl45_selectcc  : SDNode<"TL45ISD::SELECT_CC", SDT_TL45SelectCC,
                              [SDNPInGlue]>;
+
+def tl45_broff : SDNode<"TL45ISD::BR_OFF", SDT_TL45BrOff, [SDNPHasChain, SDNPOptInGlue]>;
+def tl45_ldah : SDNode<"TL45ISD::LD_AH" , SDT_TL45LdAH, [SDNPHasChain, SDNPOutGlue] >;
 
 
 // Implements a conditional jump: generates skips/goto to
@@ -129,7 +138,7 @@ let mode = 0b001 in {
 
   let mayLoad = 1 in
     def LB : RRITypeInstr<0x12, "lb", [
-      (set (i32 GRRegs:$dr), (zextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
+      (set i32:$dr, (zextloadi8 (add (i32 GRRegs:$sr1), TL45imm16:$imm)))
     ]>;
 
    let mayLoad = 1 in
@@ -185,8 +194,33 @@ let Uses = [eflags], isBranch = 1, isTerminator = 1, isPredicable = 1 in {
 }
 
 let isBranch = 1, isTerminator = 1, isBarrier = 1 in
-  defm JMP : JTypeInstr<0xC, 0xF, "jmp", [(br bb:$imm)]>;
+  defm JMP : JTypeInstr<0xC, 0xF, "jmp">;
 
+def LdAH: TL45PseudoInstr<(outs GRRegs:$dr), (ins jmp_target_h:$high),
+    "ldah", "$dr, $high",
+    [(set (i32 GRRegs:$dr), (tl45_ldah bb:$high))]>;
+let isBranch = 1, isTerminator = 1, isBarrier = 1 in
+    def BrOff : TL45PseudoInstr<(outs), (ins GRRegs:$base, jmp_target_l:$offset),
+       "br", "$base, $offset", [(tl45_broff GRRegs:$base, bb:$offset)]>;
+//       PseudoInstExpansion<(JMP GRRegs:$base, jmp_target_l:$offset)>;
+
+
+// CMP_JMP
+def CMP_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, GRRegs:$b, b_target:$dst),
+                     [(tl45_cmp_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 GRRegs:$b), bb:$dst)]> {
+  let hasSideEffects = 1;
+  let isBranch = 1;
+  let isTerminator = 1;
+  let isCompare    = 1;
+}
+
+def CMPI_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, TL45imm16:$b, b_target:$dst),
+                     [(tl45_cmpi_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 TL45imm16:$b), bb:$dst)]> {
+  let hasSideEffects = 1;
+  let isBranch = 1;
+  let isTerminator = 1;
+  let isCompare    = 1;
+}
 let isTerminator = 1, isBarrier = 1, isReturn = 1, dr = 0b1111 in
   def RET : NoneTypeInstr<0xE, "ret", [(tl45_ret)]>;
 
@@ -275,22 +309,6 @@ let Defs = [sp], Uses = [sp] in {
 }
 // 01101
 
-// CMP_JMP
-def CMP_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, GRRegs:$b, b_target:$dst),
-                     [(tl45_cmp_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 GRRegs:$b), bb:$dst)]> {
-  let hasSideEffects = 1;
-  let isBranch = 1;
-  let isTerminator = 1;
-  let isCompare    = 1;
-}
-
-def CMPI_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, TL45imm16:$b, b_target:$dst),
-                     [(tl45_cmpi_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 TL45imm16:$b), bb:$dst)]> {
-  let hasSideEffects = 1;
-  let isBranch = 1;
-  let isTerminator = 1;
-  let isCompare    = 1;
-}
 
 let usesCustomInserter = 1 in
   class SelectCC_rrirr<RegisterClass valty, RegisterClass cmpty>

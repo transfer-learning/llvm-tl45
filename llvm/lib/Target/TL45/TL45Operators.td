@@ -40,6 +40,13 @@ def TL45imm32 : Operand<i32>, ImmLeaf<i32, [{return isInt<32>(Imm);}]> {
   }];
 }
 
+def jmp_target_h : Operand<OtherVT> {
+}
+
+def jmp_target_l : Operand<OtherVT> {
+    let EncoderMethod = "getJmpTargetLOpValue";
+}
+
 
 def jmptarget : Operand<OtherVT> {
   let EncoderMethod = "getJumpTargetOpValue";

@@ -15,7 +15,7 @@ using namespace llvm;
 
 TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
                                        const TL45Subtarget &STI)
-        : TargetLowering(TM), Subtarget(STI) {
+    : TargetLowering(TM), Subtarget(STI) {
 
   // Set up the register classes.
   addRegisterClass(MVT::i32, &TL45::GRRegsRegClass);
@@ -69,8 +69,9 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
   setOperationAction(ISD::BR_CC, MVT::Other, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
-  setOperationAction(ISD::BRIND, MVT::Other, Expand);
-  setOperationAction(ISD::BRIND, MVT::i32, Expand);
+  setOperationAction(ISD::BR, MVT::Other, Custom);
+//  setOperationAction(ISD::BRIND, MVT::Other, Expand);
+//  setOperationAction(ISD::BRIND, MVT::i32, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Custom);
@@ -98,30 +99,26 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
 SDValue TL45TargetLowering::LowerOperation(SDValue Op,
                                            SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
-    default:
-      report_fatal_error("unimplemented operand");
-    case ISD::BR_CC:
-      return lowerBrCc(Op, DAG);
-    case ISD::SELECT:
-      return lowerSELECT(Op, DAG);
-    case ISD::SELECT_CC:
-      return lowerSelectCc(Op, DAG);
-    case ISD::AND:
-      return lowerAnd(Op, DAG);
-    case ISD::OR:
-      return lowerOr(Op, DAG);
-    case ISD::XOR:
-      return lowerXor(Op, DAG);
-    case ISD::VASTART:
-      return lowerVASTART(Op, DAG);
-    case ISD::GlobalAddress:
-      return lowerGlobalAddress(Op, DAG);
+  default:
+    report_fatal_error("unimplemented operand");
+  case ISD::BR:
+    return lowerBr(Op, DAG);
+  case ISD::BR_CC:
+    return lowerBrCc(Op, DAG);
+  case ISD::SELECT:
+    return lowerSELECT(Op, DAG);
+  case ISD::SELECT_CC:
+    return lowerSelectCc(Op, DAG);
+  case ISD::VASTART:
+    return lowerVASTART(Op, DAG);
+  case ISD::GlobalAddress:
+    return lowerGlobalAddress(Op, DAG);
   }
 }
 
 void TL45TargetLowering::analyzeInputArgs(
-        MachineFunction &MF, CCState &CCInfo,
-        const SmallVectorImpl<ISD::InputArg> &Ins, bool IsRet) const {
+    MachineFunction &MF, CCState &CCInfo,
+    const SmallVectorImpl<ISD::InputArg> &Ins, bool IsRet) const {
   unsigned NumArgs = Ins.size();
 
   for (unsigned i = 0; i != NumArgs; ++i) {
@@ -148,9 +145,9 @@ void TL45TargetLowering::analyzeInputArgs(
 }
 
 void TL45TargetLowering::analyzeOutputArgs(
-        MachineFunction &MF, CCState &CCInfo,
-        const SmallVectorImpl<ISD::OutputArg> &Outs, bool IsRet,
-        CallLoweringInfo *CLI) const {
+    MachineFunction &MF, CCState &CCInfo,
+    const SmallVectorImpl<ISD::OutputArg> &Outs, bool IsRet,
+    CallLoweringInfo *CLI) const {
   unsigned NumArgs = Outs.size();
 
   for (unsigned i = 0; i != NumArgs; i++) {
@@ -183,17 +180,17 @@ void TL45TargetLowering::analyzeOutputArgs(
 static SDValue convertLocVTToValVT(SelectionDAG &DAG, SDValue Val,
                                    const CCValAssign &VA, const SDLoc &DL) {
   switch (VA.getLocInfo()) {
-    default:
-      llvm_unreachable("Unexpected CCValAssign::LocInfo");
-    case CCValAssign::Full:
-      break;
-    case CCValAssign::BCvt:
-      //      if (VA.getLocVT() == MVT::i64 && VA.getValVT() == MVT::f32) {
-      //        Val = DAG.getNode(RISCVISD::FMV_W_X_RV64, DL, MVT::f32, Val);
-      //        break;
-      //      }
-      Val = DAG.getNode(ISD::BITCAST, DL, VA.getValVT(), Val);
-      break;
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+    break;
+  case CCValAssign::BCvt:
+    //      if (VA.getLocVT() == MVT::i64 && VA.getValVT() == MVT::f32) {
+    //        Val = DAG.getNode(RISCVISD::FMV_W_X_RV64, DL, MVT::f32, Val);
+    //        break;
+    //      }
+    Val = DAG.getNode(ISD::BITCAST, DL, VA.getValVT(), Val);
+    break;
   }
   return Val;
 }
@@ -209,11 +206,11 @@ static SDValue unpackFromRegLoc(SelectionDAG &DAG, SDValue Chain,
   const TargetRegisterClass *RC;
 
   switch (LocVT.getSimpleVT().SimpleTy) {
-    default:
-      llvm_unreachable("Unexpected register type");
-    case MVT::i32:
-      RC = &TL45::GRRegsRegClass;
-      break;
+  default:
+    llvm_unreachable("Unexpected register type");
+  case MVT::i32:
+    RC = &TL45::GRRegsRegClass;
+    break;
   }
 
   Register VReg = RegInfo.createVirtualRegister(RC);
@@ -232,13 +229,13 @@ static SDValue convertValVTToLocVT(SelectionDAG &DAG, SDValue Val,
   EVT LocVT = VA.getLocVT();
 
   switch (VA.getLocInfo()) {
-    default:
-      llvm_unreachable("Unexpected CCValAssign::LocInfo");
-    case CCValAssign::Full:
-      break;
-    case CCValAssign::BCvt:
-      Val = DAG.getNode(ISD::BITCAST, DL, LocVT, Val);
-      break;
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+    break;
+  case CCValAssign::BCvt:
+    Val = DAG.getNode(ISD::BITCAST, DL, LocVT, Val);
+    break;
   }
   return Val;
 }
@@ -261,37 +258,37 @@ static SDValue unpackFromMemLoc(SelectionDAG &DAG, SDValue Chain,
 
   ISD::LoadExtType ExtType;
   switch (VA.getLocInfo()) {
-    default:
-      llvm_unreachable("Unexpected CCValAssign::LocInfo");
-    case CCValAssign::Full:
-    case CCValAssign::Indirect:
-    case CCValAssign::BCvt:
-      ExtType = ISD::NON_EXTLOAD;
-      break;
+  default:
+    llvm_unreachable("Unexpected CCValAssign::LocInfo");
+  case CCValAssign::Full:
+  case CCValAssign::Indirect:
+  case CCValAssign::BCvt:
+    ExtType = ISD::NON_EXTLOAD;
+    break;
   }
   Val = DAG.getExtLoad(
-          ExtType, DL, LocVT, Chain, FIN,
-          MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI),
-          ValVT);
+      ExtType, DL, LocVT, Chain, FIN,
+      MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI),
+      ValVT);
   return Val;
 }
 
 static const MCPhysReg ArgGPRs[] = {
-        TL45::r2, TL45::r3, TL45::r4, TL45::r5, TL45::r6
+    TL45::r2, TL45::r3, TL45::r4, TL45::r5, TL45::r6
 };
 
 // Transform physical registers into virtual registers.
 SDValue TL45TargetLowering::LowerFormalArguments(
-        SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
-        const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
-        SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
+    SDValue Chain, CallingConv::ID CallConv, bool IsVarArg,
+    const SmallVectorImpl<ISD::InputArg> &Ins, const SDLoc &DL,
+    SelectionDAG &DAG, SmallVectorImpl<SDValue> &InVals) const {
 
   switch (CallConv) {
-    case CallingConv::C:
-    case CallingConv::Fast:
-      break;
-    default:
-      report_fatal_error("Unsupported calling convention");
+  case CallingConv::C:
+  case CallingConv::Fast:
+    break;
+  default:
+    report_fatal_error("Unsupported calling convention");
   }
 
   MachineFunction &MF = DAG.getMachineFunction();
@@ -300,14 +297,14 @@ SDValue TL45TargetLowering::LowerFormalArguments(
   if (Func.hasFnAttribute("interrupt")) {
     if (!Func.arg_empty())
       report_fatal_error(
-              "Functions with the interrupt attribute cannot have arguments!");
+          "Functions with the interrupt attribute cannot have arguments!");
 
     StringRef Kind =
-            MF.getFunction().getFnAttribute("interrupt").getValueAsString();
+        MF.getFunction().getFnAttribute("interrupt").getValueAsString();
 
     if (!(Kind == "user" || Kind == "supervisor" || Kind == "machine"))
       report_fatal_error(
-              "Function interrupt attribute argument not supported!");
+          "Function interrupt attribute argument not supported!");
   }
 
   EVT PtrVT = getPointerTy(DAG.getDataLayout());
@@ -465,8 +462,8 @@ TL45TargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
       EVT PtrVT = getPointerTy(DAG.getDataLayout());
       SDValue StackPtr = DAG.getCopyFromReg(Chain, DL, TL45::sp, PtrVT);
       SDValue Address =
-              DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
-                          DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+          DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
+                      DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
       SDValue RetValue = DAG.getStore(Chain, DL, Val, Address, MachinePointerInfo());
       RetOps.push_back(RetValue);
     } else {
@@ -567,8 +564,8 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     SDValue SizeNode = DAG.getConstant(Size, DL, XLenVT);
 
     Chain = DAG.getMemcpy(Chain, DL, FIPtr, Arg, SizeNode, Align,
-            /*IsVolatile=*/false,
-            /*AlwaysInline=*/false, IsTailCall,
+        /*IsVolatile=*/false,
+        /*AlwaysInline=*/false, IsTailCall,
                           MachinePointerInfo(), MachinePointerInfo());
     ByValArgs.push_back(FIPtr);
   }
@@ -594,8 +591,8 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
       SDValue SpillSlot = DAG.CreateStackTemporary(Outs[i].ArgVT);
       int FI = cast<FrameIndexSDNode>(SpillSlot)->getIndex();
       MemOpChains.push_back(
-              DAG.getStore(Chain, DL, ArgValue, SpillSlot,
-                           MachinePointerInfo::getFixedStack(MF, FI)));
+          DAG.getStore(Chain, DL, ArgValue, SpillSlot,
+                       MachinePointerInfo::getFixedStack(MF, FI)));
       // If the original argument was split (e.g. i128), we need
       // to store all parts of it here (and pass just one address).
       unsigned ArgIndex = Outs[i].OrigArgIndex;
@@ -606,8 +603,8 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
         SDValue Address = DAG.getNode(ISD::ADD, DL, PtrVT, SpillSlot,
                                       DAG.getIntPtrConstant(PartOffset, DL));
         MemOpChains.push_back(
-                DAG.getStore(Chain, DL, PartValue, Address,
-                             MachinePointerInfo::getFixedStack(MF, FI)));
+            DAG.getStore(Chain, DL, PartValue, Address,
+                         MachinePointerInfo::getFixedStack(MF, FI)));
         ++i;
       }
       ArgValue = SpillSlot;
@@ -632,12 +629,12 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
       if (!StackPtr.getNode())
         StackPtr = DAG.getCopyFromReg(Chain, DL, TL45::sp, PtrVT);
       SDValue Address =
-              DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
-                          DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
+          DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
+                      DAG.getIntPtrConstant(VA.getLocMemOffset(), DL));
 
       // Emit the store.
       MemOpChains.push_back(
-              DAG.getStore(Chain, DL, ArgValue, Address, MachinePointerInfo()));
+          DAG.getStore(Chain, DL, ArgValue, Address, MachinePointerInfo()));
     }
   }
 
@@ -721,8 +718,8 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     // Copy the value out
     if (VA.isRegLoc()) {
       SDValue RetValue =
-              DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(),
-                                 Glue);
+          DAG.getCopyFromReg(Chain, DL, VA.getLocReg(), VA.getLocVT(),
+                             Glue);
       // Glue the RetValue to the end of the call sequence
       Chain = RetValue.getValue(1);
       Glue = RetValue.getValue(2);
@@ -836,20 +833,20 @@ SDValue TL45TargetLowering::ExpandLibCall(const char *LibcallName, SDValue Op,
   SDValue TCChain = InChain;
   const Function &F = DAG.getMachineFunction().getFunction();
   bool isTailCall =
-          isInTailCallPosition(DAG, Node, TCChain) &&
-          (RetTy == F.getReturnType() || F.getReturnType()->isVoidTy());
+      isInTailCallPosition(DAG, Node, TCChain) &&
+      (RetTy == F.getReturnType() || F.getReturnType()->isVoidTy());
   if (isTailCall)
     InChain = TCChain;
 
   TargetLowering::CallLoweringInfo CLI(DAG);
   bool signExtend = shouldSignExtendTypeInLibCall(RetVT, isSigned);
   CLI.setDebugLoc(SDLoc(Node))
-          .setChain(InChain)
-          .setLibCallee(CallingConv::C, RetTy, Callee, std::move(Args))
-          .setTailCall(isTailCall)
-          .setSExtResult(signExtend)
-          .setZExtResult(!signExtend)
-          .setIsPostTypeLegalization(true);
+      .setChain(InChain)
+      .setLibCallee(CallingConv::C, RetTy, Callee, std::move(Args))
+      .setTailCall(isTailCall)
+      .setSExtResult(signExtend)
+      .setZExtResult(!signExtend)
+      .setIsPostTypeLegalization(true);
 
   std::pair<SDValue, SDValue> CallInfo = LowerCallTo(CLI);
 
@@ -863,36 +860,19 @@ SDValue TL45TargetLowering::ExpandLibCall(const char *LibcallName, SDValue Op,
   return CallInfo.first;
 }
 
-SDValue
-TL45TargetLowering::lowerShiftLeft(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  SDValue Vl = Op.getOperand(0);
-  SDValue ShiftAmt = Op.getOperand(1);
-
-  if (ShiftAmt.getOpcode() != ISD::Constant) {
-    return ExpandLibCall("__shlu", Op, false, DAG);
-  }
-
-  // fold constant shift into repeated ADDs
-
-  EVT VT = Vl.getValueType();
-  uint64_t ShAmt = cast<ConstantSDNode>(ShiftAmt.getNode())->getZExtValue();
-
-  for (uint64_t i = 0; i < ShAmt; i++) {
-    Vl = DAG.getNode(ISD::ADD, DL, VT, Vl, Vl);
-  }
-
-  return Vl;
-}
-
 SDValue TL45TargetLowering::lowerBr(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DagLoc(Op);
   SDValue Chain = Op.getOperand(0);
   SDValue Dest = Op.getOperand(1);
   SDLoc DL(Op);
 
-  SDValue Jmp = DAG.getNode(TL45ISD::JMP, DL, MVT::Other, Chain, Dest);
-  return Jmp;
+//  SDValue Jmp = DAG.getNode(TL45ISD::JMP, DL, MVT::Other, Chain, Dest);
+//  return Jmp;
+  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Glue), Chain, Dest);
+
+//  SDValue base = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Dest), 0);
+  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, Chain, base.getValue(0), Dest, base.getValue(1));
+  return BrOff;
 }
 
 SDValue TL45TargetLowering::lowerBrCc(SDValue Op, SelectionDAG &DAG) const {
@@ -907,12 +887,12 @@ SDValue TL45TargetLowering::lowerBrCc(SDValue Op, SelectionDAG &DAG) const {
 
   if (isa<ConstantSDNode>(RHS) &&
       cast<ConstantSDNode>(RHS)->getConstantIntValue()->getValue().isSignedIntN(
-              16)) {
+          16)) {
     return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
                        DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, Dest);
   } else if (isa<ConstantSDNode>(LHS) &&
              cast<ConstantSDNode>(
-                     LHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
+                 LHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
     return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
                        DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL,
                                        MVT::i32), RHS, LHS, Dest);
@@ -963,50 +943,6 @@ SDValue TL45TargetLowering::lowerSelectCc(SDValue Op,
   return SelectMove;
 }
 
-static SDValue
-notValue(SelectionDAG &DAG, const SDLoc &DL, EVT VT, SDValue Value) {
-  return DAG.getNode(TL45ISD::NAND, DL, VT, Value, Value);
-}
-
-SDValue TL45TargetLowering::lowerAnd(SDValue Op, SelectionDAG &DAG) const {
-  SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
-  EVT VT = LHS.getValueType();
-  SDLoc DL(Op);
-  // A AND B = (A NAND B) NAND (A NAND B)
-  SDValue Nand = DAG.getNode(TL45ISD::NAND, DL, VT, LHS, RHS);
-  SDValue And = notValue(DAG, DL, VT, Nand);
-  return And;
-}
-
-SDValue TL45TargetLowering::lowerOr(SDValue Op, SelectionDAG &DAG) const {
-  SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
-  EVT VT = LHS.getValueType();
-  SDLoc DL(Op);
-  // A OR B = (NOT A) NAND (NOT B) = (A NAND A) NAND (B NAND B)
-  SDValue NotA = notValue(DAG, DL, VT, LHS);
-  SDValue NotB = notValue(DAG, DL, VT, RHS);
-  SDValue Or = DAG.getNode(TL45ISD::NAND, DL, VT, NotA, NotB);
-  return Or;
-}
-
-SDValue TL45TargetLowering::lowerXor(SDValue Op, SelectionDAG &DAG) const {
-  SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
-
-  EVT VT = LHS.getValueType();
-  SDLoc DL(Op);
-  // A XOR B = ((((a NAND b) NAND a) NAND ((a NAND b) NAND b)))
-  SDValue NandAB = DAG.getNode(TL45ISD::NAND, DL, VT, LHS, RHS);
-
-  SDValue NandABNandA = DAG.getNode(TL45ISD::NAND, DL, VT, NandAB, LHS);
-  SDValue NandABNandB = DAG.getNode(TL45ISD::NAND, DL, VT, NandAB, RHS);
-
-  SDValue Xor = DAG.getNode(TL45ISD::NAND, DL, VT, NandABNandA, NandABNandB);
-  return Xor;
-}
-
 std::pair<unsigned, const TargetRegisterClass *>
 TL45TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
                                                  StringRef Constraint,
@@ -1015,10 +951,10 @@ TL45TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   // TL45 register class.
   if (Constraint.size() == 1) {
     switch (Constraint[0]) {
-      case 'r':
-        return std::make_pair(0U, &TL45::GRRegsRegClass);
-      default:
-        break;
+    case 'r':
+      return std::make_pair(0U, &TL45::GRRegsRegClass);
+    default:
+      break;
     }
   }
 
@@ -1027,23 +963,23 @@ TL45TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
   // users of these frontends to use the ABI names for registers in LLVM-style
   // register constraints.
   Register XRegFromAlias = StringSwitch<Register>(Constraint.lower())
-          .Cases("{zero}", "{r0}", TL45::r0)
-          .Case("{r1}", TL45::r1)
-          .Case("{r2}", TL45::r2)
-          .Case("{r3}", TL45::r3)
-          .Case("{r4}", TL45::r4)
-          .Case("{r5}", TL45::r5)
-          .Case("{r6}", TL45::r6)
-          .Case("{r7}", TL45::r7)
-          .Case("{r8}", TL45::r8)
-          .Case("{r9}", TL45::r9)
-          .Case("{r10}", TL45::r10)
-          .Case("{r11}", TL45::r11)
-          .Case("{r12}", TL45::r12)
-          .Case("{r13}", TL45::r13)
-          .Cases("{bp}", "{r14}", TL45::bp)
-          .Cases("{sp}", "{r15}", TL45::sp)
-          .Default(TL45::NoRegister);
+      .Cases("{zero}", "{r0}", TL45::r0)
+      .Case("{r1}", TL45::r1)
+      .Case("{r2}", TL45::r2)
+      .Case("{r3}", TL45::r3)
+      .Case("{r4}", TL45::r4)
+      .Case("{r5}", TL45::r5)
+      .Case("{r6}", TL45::r6)
+      .Case("{r7}", TL45::r7)
+      .Case("{r8}", TL45::r8)
+      .Case("{r9}", TL45::r9)
+      .Case("{r10}", TL45::r10)
+      .Case("{r11}", TL45::r11)
+      .Case("{r12}", TL45::r12)
+      .Case("{r13}", TL45::r13)
+      .Cases("{bp}", "{r14}", TL45::bp)
+      .Cases("{sp}", "{r15}", TL45::sp)
+      .Default(TL45::NoRegister);
   if (XRegFromAlias != TL45::NoRegister)
     return std::make_pair(XRegFromAlias, &TL45::GRRegsRegClass);
 
@@ -1052,38 +988,38 @@ TL45TargetLowering::getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
 
 const char *TL45TargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch ((TL45ISD::NodeType) Opcode) {
-    case TL45ISD::FIRST_NUMBER:
-      break;
-    case TL45ISD::RET:
-      return "TL45ISD::RET";
-    case TL45ISD::CALL:
-      return "TL45ISD::CALL";
-    case TL45ISD::JMP:
-      return "TL45ISD::JMP";
-    case TL45ISD::NAND:
-      return "TL45ISD::NAND";
-    case TL45ISD::CMP_SKIP:
-      return "TL45ISD::CMP_SKIP";
-    case TL45ISD::CMP_JMP:
-      return "TL45ISD::CMP_JMP";
-    case TL45ISD::CMPI_JMP:
-      return "TL45ISD::CMPI_JMP";
-    case TL45ISD::SUB_TERM:
-      return "TL45ISD::SUB_TERM";
-    case TL45ISD::SELECT_MOVE:
-      return "TL45ISD::SELECT_MOVE";
-    case TL45ISD::CMP_SELECT_MOVE:
-      return "TL45ISD::CMP_SELECT_MOVE";
+  case TL45ISD::FIRST_NUMBER:
+    break;
+  case TL45ISD::RET:
+    return "TL45ISD::RET";
+  case TL45ISD::CALL:
+    return "TL45ISD::CALL";
+  case TL45ISD::JMP:
+    return "TL45ISD::JMP";
+  case TL45ISD::CMP_JMP:
+    return "TL45ISD::CMP_JMP";
+  case TL45ISD::CMPI_JMP:
+    return "TL45ISD::CMPI_JMP";
+  case TL45ISD::SUB_TERM:
+    return "TL45ISD::SUB_TERM";
+  case TL45ISD::SELECT_MOVE:
+    return "TL45ISD::SELECT_MOVE";
+  case TL45ISD::CMP_SELECT_MOVE:
+    return "TL45ISD::CMP_SELECT_MOVE";
+  case TL45ISD::BR_OFF:
+    return "TL45ISD::BR_OFF";
+  case TL45ISD::LD_AH:
+    return "TL45ISD::LD_AH";
   }
   return nullptr;
 }
 
 static bool isSelectPseudo(MachineInstr &MI) {
   switch (MI.getOpcode()) {
-    default:
-      return false;
-    case TL45::Select_GRRegs_Using_CC_GRRegs:
-      return true;
+  default:
+    return false;
+  case TL45::Select_GRRegs_Using_CC_GRRegs:
+    return true;
   }
 }
 
@@ -1092,31 +1028,32 @@ static bool isSelectPseudo(MachineInstr &MI) {
 // ISA (see normaliseSetCC).
 static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
   switch (CC) {
-    default:
-      llvm_unreachable("Unsupported CondCode");
-    case ISD::SETEQ:
-      return TL45::JEI;
-    case ISD::SETNE:
-      return TL45::JNEI;
-    case ISD::SETLT:
-      return TL45::JLI;
-    case ISD::SETGE:
-      return TL45::JGI;
-    case ISD::SETULT:
-      return TL45::JBI;
-    case ISD::SETUGE:
-      return TL45::JNBI;
-    case ISD::SETGT:
-      return TL45::JGI;
-    case ISD::SETUGT:
-      return TL45::JAI;
-    case ISD::SETLE:
-      return TL45::JLEI;
-    case ISD::SETULE:
-      return TL45::JBEI;
+  default:
+    llvm_unreachable("Unsupported CondCode");
+  case ISD::SETEQ:
+    return TL45::JEI;
+  case ISD::SETNE:
+    return TL45::JNEI;
+  case ISD::SETLT:
+    return TL45::JLI;
+  case ISD::SETGE:
+    return TL45::JGI;
+  case ISD::SETULT:
+    return TL45::JBI;
+  case ISD::SETUGE:
+    return TL45::JNBI;
+  case ISD::SETGT:
+    return TL45::JGI;
+  case ISD::SETUGT:
+    return TL45::JAI;
+  case ISD::SETLE:
+    return TL45::JLEI;
+  case ISD::SETULE:
+    return TL45::JBEI;
   }
 }
 
+// Emit SelectCC
 static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
                                            MachineBasicBlock *BB) {
   // To "insert" Select_* instructions, we actually have to insert the triangle
@@ -1127,7 +1064,7 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   // We produce the following control flow:
   //     HeadMBB
   //     |  \
-    //     |  IfFalseMBB
+  //     |  IfFalseMBB
   //     | /
   //    TailMBB
   //
@@ -1210,11 +1147,11 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
 
   BuildMI(HeadMBB, DL, TII.get(TL45::SUB_TERM), TL45::r0)
-          .addReg(LHS)
-          .addReg(RHS);
+      .addReg(LHS)
+      .addReg(RHS);
 
   BuildMI(HeadMBB, DL, TII.get(Opcode))
-          .addMBB(TailMBB);
+      .addMBB(TailMBB);
 
   // IfFalseMBB just falls through to TailMBB.
   IfFalseMBB->addSuccessor(TailMBB);
@@ -1229,10 +1166,10 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
       // %Result = phi [ %TrueValue, HeadMBB ], [ %FalseValue, IfFalseMBB ]
       BuildMI(*TailMBB, InsertionPoint, SelectMBBI->getDebugLoc(),
               TII.get(TL45::PHI), SelectMBBI->getOperand(0).getReg())
-              .addReg(SelectMBBI->getOperand(4).getReg())
-              .addMBB(HeadMBB)
-              .addReg(SelectMBBI->getOperand(5).getReg())
-              .addMBB(IfFalseMBB);
+          .addReg(SelectMBBI->getOperand(4).getReg())
+          .addMBB(HeadMBB)
+          .addReg(SelectMBBI->getOperand(5).getReg())
+          .addMBB(IfFalseMBB);
       SelectMBBI->eraseFromParent();
     }
     SelectMBBI = Next;
@@ -1246,10 +1183,10 @@ MachineBasicBlock *
 TL45TargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                 MachineBasicBlock *BB) const {
   switch (MI.getOpcode()) {
-    default:
-      llvm_unreachable("Unexpected instr type to insert");
-    case TL45::Select_GRRegs_Using_CC_GRRegs:
-      return emitSelectPseudo(MI, BB);
+  default:
+    llvm_unreachable("Unexpected instr type to insert");
+  case TL45::Select_GRRegs_Using_CC_GRRegs:
+    return emitSelectPseudo(MI, BB);
 
   }
 }

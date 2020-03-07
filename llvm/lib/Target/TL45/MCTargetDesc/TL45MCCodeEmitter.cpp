@@ -23,6 +23,10 @@ namespace {
         unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                 SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const;
 
+        unsigned getJmpTargetLOpValue(const MCInst &MI, unsigned OpNo,
+                SmallVectorImpl<MCFixup> &Fixups,
+                const MCSubtargetInfo &STI) const;
+
       unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
@@ -129,7 +133,11 @@ unsigned TL45MCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
   } else if (Kind == MCExpr::SymbolRef &&
              cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
 
-    FixupKind = TL45::fixup_tl45_lo16_i;
+    if (MI.getOpcode() == TL45::ADDHI) {
+      FixupKind = TL45::fixup_tl45_hi16_i;
+    } else {
+      FixupKind = TL45::fixup_tl45_lo16_i;
+    }
     //    if (Desc.getOpcode() == TL45::JAL) {
 //      FixupKind = TL45::fixup_tl45_jal;
 //    } else if (MIFrm == TL45II::InstFormatB) {
@@ -158,6 +166,39 @@ unsigned TL45MCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
 //    ++MCNumFixups;
 //  }
 
+  return 0;
+}
+
+unsigned TL45MCCodeEmitter::getJmpTargetLOpValue(const MCInst &MI, unsigned OpNo, SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const {
+  // bool EnableRelax = STI.getFeatureBits()[TL45::FeatureRelax];
+  const MCOperand &MO = MI.getOperand(OpNo);
+
+  MCInstrDesc const &Desc = InstrInfo.get(MI.getOpcode());
+  // unsigned MIFrm = Desc.TSFlags & TL45II::InstFormatMask;
+
+  // If the destination is an immediate, there is nothing to do.
+  if (MO.isImm())
+    return MO.getImm();
+
+  assert(MO.isExpr() &&
+         "getImmOpValue expects only expressions or immediates");
+  const MCExpr *Expr = MO.getExpr();
+  MCExpr::ExprKind Kind = Expr->getKind();
+  TL45::Fixups FixupKind = TL45::fixup_tl45_invalid;
+  bool RelaxCandidate = false;
+  if (Kind == MCExpr::Target) {
+    llvm_unreachable("todo, support MCExpr::Target");
+  } else if (Kind == MCExpr::SymbolRef &&
+             cast<MCSymbolRefExpr>(Expr)->getKind() == MCSymbolRefExpr::VK_None) {
+
+    FixupKind = TL45::fixup_tl45_lo16_i;
+  }
+
+  assert(FixupKind != TL45::fixup_tl45_invalid && "Unhandled expression!");
+
+  Fixups.push_back(
+          MCFixup::create(0, Expr, MCFixupKind(FixupKind), MI.getLoc()));
+  ++MCNumFixups;
   return 0;
 }
 

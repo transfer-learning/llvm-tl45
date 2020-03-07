@@ -9,6 +9,7 @@
 #define DEBUG_TYPE "tl45-instr-info"
 
 #define GET_INSTRINFO_CTOR_DTOR
+
 #include "TL45GenInstrInfo.inc"
 
 using namespace llvm;
@@ -16,10 +17,10 @@ using namespace llvm;
 TL45InstrInfo::TL45InstrInfo() : TL45GenInstrInfo(TL45::ADJCALLSTACKDOWN, TL45::ADJCALLSTACKUP, -1, TL45::RET), RI() {}
 
 void TL45InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
-                                          MachineBasicBlock::iterator I,
-                                          unsigned SrcReg, bool IsKill, int FI,
-                                          const TargetRegisterClass *RC,
-                                          const TargetRegisterInfo *TRI) const {
+                                        MachineBasicBlock::iterator I,
+                                        unsigned SrcReg, bool IsKill, int FI,
+                                        const TargetRegisterClass *RC,
+                                        const TargetRegisterInfo *TRI) const {
   DebugLoc DL;
   if (I != MBB.end())
     DL = I->getDebugLoc();
@@ -56,12 +57,12 @@ void TL45InstrInfo::loadRegFromStackSlot(
 }
 
 unsigned TL45InstrInfo::resolveComparison(MachineBasicBlock &MBB,
-                                            MachineBasicBlock::iterator I,
-                                            const DebugLoc &DL,
-                                            ISD::CondCode ConditionCode,
-                                            MachineOperand &a,
-                                            MachineOperand &b,
-                                            unsigned int &JmpOpcode, bool isImm) const {
+                                          MachineBasicBlock::iterator I,
+                                          const DebugLoc &DL,
+                                          ISD::CondCode ConditionCode,
+                                          MachineOperand &a,
+                                          MachineOperand &b,
+                                          unsigned int &JmpOpcode, bool isImm) const {
   unsigned bytesAdded;
   // Recursive rewrite rules :^)))
   // a =  b  ==> !(a != b) ==> skpe a, b; jmp 1; jmp dst
@@ -126,7 +127,17 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   default:
     return false;
-
+  case TL45::BrOff: {
+    BuildMI(MBB, MI, DL, get(TL45::JMP))
+        .add(MI.getOperand(0)) // Base
+        .add(MI.getOperand(1)); // Offset
+    break;
+  }
+  case TL45::LdAH: {
+    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(0).getReg())
+        .addReg(TL45::r0).add(MI.getOperand(1));
+    break;
+  }
   case TL45::CMP_JMP: {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
@@ -181,9 +192,9 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 //    break;
 //  }
 
-  //case TL45::PseudoRET: {
-  //  break;
-  //}
+    //case TL45::PseudoRET: {
+    //  break;
+    //}
   }
 
   MBB.erase(MI);
@@ -191,16 +202,16 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
 }
 
 unsigned TL45InstrInfo::loadImmediate(unsigned FrameReg, int64_t Imm,
-                                        MachineBasicBlock &MBB,
-                                        MachineBasicBlock::iterator II,
-                                        const DebugLoc &DL,
-                                        unsigned &NewImm) const {
+                                      MachineBasicBlock &MBB,
+                                      MachineBasicBlock::iterator II,
+                                      const DebugLoc &DL,
+                                      unsigned &NewImm) const {
 
   llvm_unreachable("not yet implemented loadImmediate()");
 }
 
 bool TL45InstrInfo::validImmediate(unsigned Opcode, unsigned Reg,
-                                     int64_t Amount) {
+                                   int64_t Amount) {
   return isInt<20>(Amount);
 }
 
@@ -217,10 +228,10 @@ bool TL45InstrInfo::isAsCheapAsAMove(const MachineInstr &MI) const {
 }
 
 void TL45InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
-                                  MachineBasicBlock::iterator MI,
-                                  const DebugLoc &DL,
-                                  unsigned DestReg, unsigned SrcReg,
-                                  bool KillSrc) const {
+                                MachineBasicBlock::iterator MI,
+                                const DebugLoc &DL,
+                                unsigned DestReg, unsigned SrcReg,
+                                bool KillSrc) const {
   BuildMI(MBB, MI, DL, get(TL45::ADD))
       .addReg(DestReg)
       .addReg(SrcReg)
@@ -267,7 +278,7 @@ unsigned TL45InstrInfo::insertBranch(
   }
 
   if (BytesAdded)
-    *BytesAdded += (int)Count * 4;
+    *BytesAdded += (int) Count * 4;
   return Count;
 }
 
@@ -276,8 +287,14 @@ static unsigned int BrOpcode[] = {
     TL45::JE, TL45::JEI, TL45::JNE, TL45::JNEI, TL45::JB, TL45::JBI, TL45::JNB, TL45::JNBI,
 
     TL45::JBE, TL45::JBEI, TL45::JA, TL45::JAI, TL45::JL, TL45::JLI, TL45::JGE, TL45::JGEI,
-    TL45::JLE, TL45::JLEI, TL45::JG, TL45::JGI, TL45::JMP, TL45::JMPI, 0
-    };
+    TL45::JLE, TL45::JLEI, TL45::JG, TL45::JGI,
+    TL45::JMP,
+    TL45::JMPI,
+
+//    TL45::BrOff,
+
+    0
+};
 
 static bool getAnalyzableBrOpc(unsigned Opc) {
 
@@ -287,27 +304,27 @@ static bool getAnalyzableBrOpc(unsigned Opc) {
     }
   }
 
-    return Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP;
+  return Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP;
 
 }
 
 static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
-                                  MachineBasicBlock *&BB,
-                                  SmallVectorImpl<MachineOperand> &Cond,
+                          MachineBasicBlock *&BB,
+                          SmallVectorImpl<MachineOperand> &Cond,
                           MachineBasicBlock::reverse_iterator LastInstI) {
   assert(getAnalyzableBrOpc(Opc) && "Not an analyzable branch");
   int NumOp = Inst->getNumExplicitOperands();
 
   // for both int and fp branches, the last explicit operand is the
   // MBB.
-  BB = Inst->getOperand(NumOp-1).getMBB();
+  BB = Inst->getOperand(NumOp - 1).getMBB();
   // Cond.push_back(MachineOperand::CreateImm(Opc));
 
   if (Opc == TL45::CMP_JMP || Opc == TL45::CMPI_JMP) {
 
     Cond.push_back(MachineOperand::CreateImm(Inst->getOpcode()));
 
-    for (int i = 0; i < NumOp-1; i++)
+    for (int i = 0; i < NumOp - 1; i++)
       Cond.push_back(Inst->getOperand(i));
 
   } else {
@@ -364,7 +381,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// The CFG information in MBB.Predecessors and MBB.Successors must be valid
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
-                                    SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
+                                  SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.
@@ -412,7 +429,23 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
   if (!SecondLastOpc || !getAnalyzableBrOpc(SecondLastOpc)) {
     // Unconditional branch.
     if (LastInst->isUnconditionalBranch()) {
-      TBB = LastInst->getOperand(0).getMBB();
+      switch (LastInst->getOpcode()) {
+      default:
+        llvm_unreachable("Unexpected Unconditional Branch");
+        break;
+      case TL45::JMPI: {
+        TBB = LastInst->getOperand(0).getMBB();
+        break;
+      }
+      case TL45::BrOff: {
+        TBB = LastInst->getOperand(1).getMBB();
+        break;
+      }
+      case TL45::JMP: {
+        TBB = LastInst->getOperand(1).getMBB();
+        break;
+      }
+      }
       return false;
     }
 
@@ -470,32 +503,20 @@ unsigned TL45InstrInfo::removeBranch(MachineBasicBlock &MBB,
     if (!getAnalyzableBrOpc(I->getOpcode()))
       break;
     // Remove the branch.
-    I->eraseFromParent();
-    I = MBB.rbegin();
-    ++removed;
+    if (I->getOpcode() == TL45::BrOff || I->getOpcode() == TL45::JMP) {
+      I->eraseFromParent();
+      I = MBB.rbegin();
+      ++removed;
+      if (I->getOpcode() == TL45::ADDHI || I->getOpcode() == TL45::LdAH) {
+        I->eraseFromParent();
+        I = MBB.rbegin();
+        ++removed;
+      }
+    } else {
+      I->eraseFromParent();
+      I = MBB.rbegin();
+      ++removed;
+    }
   }
-
-  // remove the last instruction if it is a set flags subtract.
-//  while (I != REnd) {
-//    // Skip past debug instructions.
-//    if (I->isDebugInstr()) {
-//      ++I;
-//      continue;
-//    }
-//
-//    // Not a subtract
-//    if ((*I).getOpcode() != TL45::SUB && (*I).getOpcode() != TL45::SUBI)
-//      break;
-//
-//    // Return value isn't discarded.
-//    if ((*I).getOperand(0).getReg() != TL45::r0)
-//      break;
-//
-//    // Remove the branch.
-//    I->eraseFromParent();
-//    I = MBB.rbegin();
-//    ++removed;
-//  }
-
   return removed;
 }

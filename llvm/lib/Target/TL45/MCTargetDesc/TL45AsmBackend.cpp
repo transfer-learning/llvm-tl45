@@ -58,31 +58,8 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
     return Value;
   case TL45::fixup_tl45_lo16_i:
     return Value & 0xffff;
-//  case RISCV::fixup_riscv_lo12_s:
-//  case RISCV::fixup_riscv_pcrel_lo12_s:
-//  case RISCV::fixup_riscv_tprel_lo12_s:
-//    return (((Value >> 5) & 0x7f) << 25) | ((Value & 0x1f) << 7);
   case TL45::fixup_tl45_hi16_i:
-    // Add 1 if bit 11 is 1, to compensate for low 12 bits being negative.
     return (Value >> 16) & 0xffff;
-//  case RISCV::fixup_riscv_jal: {
-//    if (!isInt<21>(Value))
-//      Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-//    if (Value & 0x1)
-//      Ctx.reportError(Fixup.getLoc(), "fixup value must be 2-byte aligned");
-//    // Need to produce imm[19|10:1|11|19:12] from the 21-bit Value.
-//    unsigned Sbit = (Value >> 20) & 0x1;
-//    unsigned Hi8 = (Value >> 12) & 0xff;
-//    unsigned Mid1 = (Value >> 11) & 0x1;
-//    unsigned Lo10 = (Value >> 1) & 0x3ff;
-//    // Inst{31} = Sbit;
-//    // Inst{30-21} = Lo10;
-//    // Inst{20} = Mid1;
-//    // Inst{19-12} = Hi8;
-//    Value = (Sbit << 19) | (Lo10 << 9) | (Mid1 << 8) | Hi8;
-//    return Value;
-//  }
-
   }
 }
 

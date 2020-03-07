@@ -16,11 +16,7 @@
 namespace llvm {
 namespace TL45 {
 enum Fixups {
-  // fixup_tl45_hi20 - 20-bit fixup corresponding to hi(foo) for
-  // instructions like lui
   fixup_tl45_hi16_i = FirstTargetFixupKind,
-  // fixup_tl45_lo12_i - 12-bit fixup corresponding to lo(foo) for
-  // instructions like addi
   fixup_tl45_lo16_i,
 
   fixup_tl45_32,
