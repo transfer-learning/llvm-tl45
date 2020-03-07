@@ -17,6 +17,16 @@ def TL45imm16 : Operand<i32>, ImmLeaf<i32, [{return isInt<16>(Imm);}]> {
   }];
 }
 
+def TL45Uimm16 : Operand<i32>, ImmLeaf<i32, [{return isUInt<16>(Imm);}]> {
+  let EncoderMethod = "getImmOpValue";
+  let MCOperandPredicate = [{
+    int64_t Imm;
+    if (MCOp.evaluateAsConstantImm(Imm))
+      return isUInt<16>(Imm);
+    return MCOp.isBareSymbolRef();
+  }];
+}
+
 def TL45imm32 : Operand<i32>, ImmLeaf<i32, [{return isInt<32>(Imm);}]> {
   let EncoderMethod = "getImmOpValue";
   let MCOperandPredicate = [{

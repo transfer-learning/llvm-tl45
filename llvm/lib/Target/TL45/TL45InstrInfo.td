@@ -195,6 +195,11 @@ let Uses = [eflags], isBranch = 1, isTerminator = 1, isPredicable = 1 in {
 
 let isBranch = 1, isTerminator = 1, isBarrier = 1 in
   defm JMP : JTypeInstr<0xC, 0xF, "jmp">;
+let isBarrier = 1, isBranch = 1, isIndirectBranch = 1, isTerminator = 1 in
+    def PseudoBRIND : Pseudo<(outs), (ins GRRegs:$base, TL45Uimm16:$imm), []>,
+        PseudoInstExpansion<(JMP GRRegs:$base, TL45Uimm16:$imm)>;
+
+def : Pat<(brind GRRegs:$target), (PseudoBRIND GRRegs:$target, 0)>;
 
 def LdAH: TL45PseudoInstr<(outs GRRegs:$dr), (ins jmp_target_h:$high),
     "ldah", "$dr, $high",
