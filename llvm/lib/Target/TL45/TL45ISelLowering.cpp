@@ -885,20 +885,21 @@ SDValue TL45TargetLowering::lowerBrCc(SDValue Op, SelectionDAG &DAG) const {
 
   SDLoc DL(Op);
 
+  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, MVT::i32, Chain, Dest);
+
   if (isa<ConstantSDNode>(RHS) &&
       cast<ConstantSDNode>(RHS)->getConstantIntValue()->getValue().isSignedIntN(
           16)) {
-    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
-                       DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, Dest);
+    SDValue Ops[] = {Chain, DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base, Dest};
+    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Ops);
   } else if (isa<ConstantSDNode>(LHS) &&
              cast<ConstantSDNode>(
                  LHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
-    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Chain,
-                       DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL,
-                                       MVT::i32), RHS, LHS, Dest);
+    SDValue Ops[] = {Chain, DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL, MVT::i32), RHS, LHS, base, Dest};
+    return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Ops);
   } else {
-    return DAG.getNode(TL45ISD::CMP_JMP, DL, MVT::Other, Chain,
-                       DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, Dest);
+    SDValue Ops[] = {Chain, DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base, Dest};
+    return DAG.getNode(TL45ISD::CMP_JMP, DL, MVT::Other, Ops);
   }
 }
 
@@ -1031,25 +1032,25 @@ static unsigned getBranchOpcodeForIntCondCode(ISD::CondCode CC) {
   default:
     llvm_unreachable("Unsupported CondCode");
   case ISD::SETEQ:
-    return TL45::JEI;
+    return TL45::JE;
   case ISD::SETNE:
-    return TL45::JNEI;
+    return TL45::JNE;
   case ISD::SETLT:
-    return TL45::JLI;
+    return TL45::JL;
   case ISD::SETGE:
-    return TL45::JGI;
+    return TL45::JG;
   case ISD::SETULT:
-    return TL45::JBI;
+    return TL45::JB;
   case ISD::SETUGE:
-    return TL45::JNBI;
+    return TL45::JNB;
   case ISD::SETGT:
-    return TL45::JGI;
+    return TL45::JG;
   case ISD::SETUGT:
-    return TL45::JAI;
+    return TL45::JA;
   case ISD::SETLE:
-    return TL45::JLEI;
+    return TL45::JLE;
   case ISD::SETULE:
-    return TL45::JBEI;
+    return TL45::JBE;
   }
 }
 
@@ -1116,6 +1117,7 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   }
 
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+  MachineRegisterInfo &TRI = BB->getParent()->getRegInfo();
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
   DebugLoc DL = MI.getDebugLoc();
   MachineFunction::iterator I = ++BB->getIterator();
@@ -1146,11 +1148,16 @@ static MachineBasicBlock *emitSelectPseudo(MachineInstr &MI,
   // Insert appropriate branch.
   unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
 
+  // Load the base register for long branch
+  auto brBaseReg = TRI.createVirtualRegister(&TL45::GRRegsRegClass);
+  BuildMI(HeadMBB, DL, TII.get(TL45::LdAH), brBaseReg).addMBB(TailMBB);
+
+  // SubTerm needs to stick with Jump
   BuildMI(HeadMBB, DL, TII.get(TL45::SUB_TERM), TL45::r0)
       .addReg(LHS)
       .addReg(RHS);
 
-  BuildMI(HeadMBB, DL, TII.get(Opcode))
+  BuildMI(HeadMBB, DL, TII.get(Opcode)).addReg(brBaseReg)
       .addMBB(TailMBB);
 
   // IfFalseMBB just falls through to TailMBB.

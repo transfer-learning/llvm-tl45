@@ -78,40 +78,40 @@ unsigned TL45InstrInfo::resolveComparison(MachineBasicBlock &MBB,
     BuildMI(MBB, I, DL, get(TL45::SUB_TERM)).addReg(TL45::r0).addReg(a.getReg()).addReg(b.getReg());
   }
 
-  bytesAdded += 1;
+  bytesAdded += 4;
 
   switch (ConditionCode) {
   case ISD::CondCode::SETEQ:
   case ISD::CondCode::SETUEQ:
-    JmpOpcode = TL45::JEI;
+    JmpOpcode = TL45::JE;
     break;
   case ISD::CondCode::SETGT:
-    JmpOpcode = TL45::JGI;
+    JmpOpcode = TL45::JG;
     break;
   case ISD::CondCode::SETUGT:
-    JmpOpcode = TL45::JAI;
+    JmpOpcode = TL45::JA;
     break;
   case ISD::CondCode::SETUGE:
-    JmpOpcode = TL45::JNBI;
+    JmpOpcode = TL45::JNB;
     break;
   case ISD::CondCode::SETGE:
-    JmpOpcode = TL45::JGEI;
+    JmpOpcode = TL45::JGE;
     break;
   case ISD::CondCode::SETLT:
-    JmpOpcode = TL45::JLI;
+    JmpOpcode = TL45::JL;
     break;
   case ISD::CondCode::SETULT:
-    JmpOpcode = TL45::JBI;
+    JmpOpcode = TL45::JB;
     break;
   case ISD::CondCode::SETLE:
-    JmpOpcode = TL45::JLEI;
+    JmpOpcode = TL45::JLE;
     break;
   case ISD::CondCode::SETULE:
-    JmpOpcode = TL45::JBEI;
+    JmpOpcode = TL45::JBE;
     break;
   case ISD::CondCode::SETNE:
   case ISD::CondCode::SETUNE:
-    JmpOpcode = TL45::JNEI;
+    JmpOpcode = TL45::JNE;
     break;
   default:
     LLVM_DEBUG(dbgs() << "Got cond code: " << ConditionCode << "\n");
@@ -142,7 +142,7 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
     resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, false);
-    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3));
+    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3)).add(MI.getOperand(4));
     break;
   }
 
@@ -150,7 +150,7 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
     resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, true);
-    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3));
+    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3)).add(MI.getOperand(4));
     break;
   }
 
@@ -382,6 +382,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                   SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
+  return true;
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.
