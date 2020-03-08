@@ -651,6 +651,7 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     Glue = Chain.getValue(1);
   }
 
+  bool isDirectCall = true;
   // If the callee is a GlobalAddress/ExternalSymbol node, turn it into a
   // TargetGlobalAddress/TargetExternalSymbol node so that legalize won't
   // split it and then direct call can be matched by PseudoCALL.
@@ -671,14 +672,18 @@ TL45TargetLowering::LowerCall(CallLoweringInfo &CLI,
     //      OpFlags = RISCVII::MO_PLT;
 
     Callee = DAG.getTargetExternalSymbol(S->getSymbol(), PtrVT, OpFlags);
+  } else {
+    isDirectCall = false;
   }
 
   // The first call operand is the chain and the second is the target address.
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
+  if (isDirectCall) {
+    auto LdAH = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Callee), 0);
+    Ops.push_back(LdAH);
+  }
 //  auto reg = MRI.createVirtualRegister(&TL45::GRRegsRegClass);
-  auto LdAH = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Callee), 0);
-  Ops.push_back(LdAH);
   Ops.push_back(Callee);
 
   // Add argument registers to the end of the list so that they are
@@ -870,12 +875,13 @@ SDValue TL45TargetLowering::lowerBr(SDValue Op, SelectionDAG &DAG) const {
   SDValue Dest = Op.getOperand(1);
   SDLoc DL(Op);
 
-//  SDValue Jmp = DAG.getNode(TL45ISD::JMP, DL, MVT::Other, Chain, Dest);
-//  return Jmp;
-  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue), Chain, Dest);
+  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Glue), Chain, Dest);
+  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, Chain, base.getValue(0), Dest, base.getValue(1));
 
+
+//  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue), Chain, Dest);
 //  SDValue base = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Chain, Dest), 0);
-  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, base.getValue(1), base.getValue(0), Dest, base.getValue(2));
+//  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, base.getValue(1), base.getValue(0), Dest, base.getValue(2));
   return BrOff;
 }
 
@@ -889,20 +895,20 @@ SDValue TL45TargetLowering::lowerBrCc(SDValue Op, SelectionDAG &DAG) const {
 
   SDLoc DL(Op);
 
-  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, MVT::i32, Chain, Dest);
+  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue), Chain, Dest);
 
   if (isa<ConstantSDNode>(RHS) &&
       cast<ConstantSDNode>(RHS)->getConstantIntValue()->getValue().isSignedIntN(
           16)) {
-    SDValue Ops[] = {Chain, DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base, Dest};
+    SDValue Ops[] = {base.getValue(1), DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base.getValue(0), Dest, base.getValue(2)};
     return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Ops);
   } else if (isa<ConstantSDNode>(LHS) &&
              cast<ConstantSDNode>(
                  LHS)->getConstantIntValue()->getValue().isSignedIntN(16)) {
-    SDValue Ops[] = {Chain, DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL, MVT::i32), RHS, LHS, base, Dest};
+    SDValue Ops[] = {base.getValue(1), DAG.getConstant(ISD::getSetCCSwappedOperands(CC), DL, MVT::i32), RHS, LHS, base.getValue(0), Dest, base.getValue(2)};
     return DAG.getNode(TL45ISD::CMPI_JMP, DL, MVT::Other, Ops);
   } else {
-    SDValue Ops[] = {Chain, DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base, Dest};
+    SDValue Ops[] = {base.getValue(1), DAG.getConstant(CC, DL, MVT::i32), LHS, RHS, base.getValue(0), Dest, base.getValue(2)};
     return DAG.getNode(TL45ISD::CMP_JMP, DL, MVT::Other, Ops);
   }
 }
