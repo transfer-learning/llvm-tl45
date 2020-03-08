@@ -134,11 +134,6 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
         .add(MI.getOperand(1)); // Offset
     break;
   }
-  case TL45::LdAH: {
-    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(0).getReg())
-        .addReg(TL45::r0).add(MI.getOperand(1));
-    break;
-  }
   case TL45::CMP_JMP: {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
@@ -390,6 +385,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                   SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
+  return true;
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.

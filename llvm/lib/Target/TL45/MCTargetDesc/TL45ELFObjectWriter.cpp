@@ -54,34 +54,6 @@ unsigned TL45ELFObjectWriter::getRelocType(MCContext &Ctx,
   switch (Kind) {
   default:
     llvm_unreachable("invalid fixup kind!");
-//  case FK_Data_4:
-//    if (Expr->getKind() == MCExpr::Target &&
-//        cast<RISCVMCExpr>(Expr)->getKind() == RISCVMCExpr::VK_RISCV_32_PCREL)
-//      return ELF::R_RISCV_32_PCREL;
-//    return ELF::R_RISCV_32;
-//  case FK_Data_8:
-//    return ELF::R_RISCV_64;
-//  case FK_Data_Add_1:
-//    return ELF::R_RISCV_ADD8;
-//  case FK_Data_Add_2:
-//    return ELF::R_RISCV_ADD16;
-//  case FK_Data_Add_4:
-//    return ELF::R_RISCV_ADD32;
-//  case FK_Data_Add_8:
-//    return ELF::R_RISCV_ADD64;
-//  case FK_Data_Add_6b:
-//    return ELF::R_RISCV_SET6;
-//  case FK_Data_Sub_1:
-//    return ELF::R_RISCV_SUB8;
-//  case FK_Data_Sub_2:
-//    return ELF::R_RISCV_SUB16;
-//  case FK_Data_Sub_4:
-//    return ELF::R_RISCV_SUB32;
-//  case FK_Data_Sub_8:
-//    return ELF::R_RISCV_SUB64;
-//  case FK_Data_Sub_6b:
-//    return ELF::R_RISCV_SUB6;
-
   case TL45::fixup_tl45_hi16_i:
     return ELF::R_TL45_HI16_I;
   case TL45::fixup_tl45_lo16_i:

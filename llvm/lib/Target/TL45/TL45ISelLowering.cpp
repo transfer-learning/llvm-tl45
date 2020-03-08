@@ -70,8 +70,8 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::Other, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
-//  setOperationAction(ISD::BRIND, MVT::Other, Expand);
-//  setOperationAction(ISD::BRIND, MVT::i32, Expand);
+  setOperationAction(ISD::BRIND, MVT::Other, Expand);
+  setOperationAction(ISD::BRIND, MVT::i32, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Custom);

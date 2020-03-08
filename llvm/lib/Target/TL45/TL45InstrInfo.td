@@ -201,9 +201,21 @@ let isBarrier = 1, isBranch = 1, isIndirectBranch = 1, isTerminator = 1 in
 
 def : Pat<(brind GRRegs:$target), (PseudoBRIND GRRegs:$target, 0)>;
 
-def LdAH: TL45PseudoInstr<(outs GRRegs:$dr), (ins jmp_target_h:$high),
-    "ldah", "$dr, $high",
-    [(set (i32 GRRegs:$dr), (tl45_ldah bb:$high))]>;
+let isTerminator = 1 in
+def LdAH: InstTL45<(outs GRRegs:$dr), (ins jmp_target_h:$high),
+    0x1, "ldah", "$dr, $high",
+    [(set (i32 GRRegs:$dr), (tl45_ldah bb:$high))]> {
+
+    bits<4> dr;
+    bits<16> high;
+
+    let Inst{26-24} = 0b110; // Mode: Imm, High, ZExt
+    let Inst{23-20} = dr;
+    let Inst{19-16} = 000;
+    let Inst{15-0} = high;
+}
+
+
 let isBranch = 1, isTerminator = 1, isBarrier = 1 in
     def BrOff : TL45PseudoInstr<(outs), (ins GRRegs:$base, jmp_target_l:$offset),
        "br", "$base, $offset", [(tl45_broff GRRegs:$base, bb:$offset)]>;
@@ -298,14 +310,9 @@ let isReturn = 1, isBarrier = 1, isTerminator = 1 in {
 */
 
 // TODO Long Call
-// def : Pat<(tl45_call tglobaladdr:$func), (CALL ), tglobaladdr:$func)>;
-//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
-
-//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
-
-// def: Pat<(tl45_ldah tglobaladdr:$addr), (LdAH jmp_target_h:$addr)>;
-
 def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
+def : Pat<(tl45_call GRRegs:$base, texternalsym:$func), (CALL GRRegs:$base, texternalsym:$func)>;
+// def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
 
 // ADJCALLSTACKDOWN/UP
 let Defs = [sp], Uses = [sp] in {
