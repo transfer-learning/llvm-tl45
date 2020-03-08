@@ -29,7 +29,7 @@ const MCPhysReg *TL45RegisterInfo::getCalleeSavedRegs(const MachineFunction *MF)
 
 BitVector TL45RegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   static const MCPhysReg ReservedGPR32[] = {
-          TL45::r0, TL45::r13, TL45::sp, TL45::bp, TL45::pc, TL45::eflags
+          TL45::r0, TL45::sp, TL45::bp, TL45::pc, TL45::eflags
   };
 
   BitVector Reserved(getNumRegs());
