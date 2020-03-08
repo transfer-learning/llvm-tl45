@@ -1205,7 +1205,7 @@ void MachineBasicBlock::ReplaceUsesOfBlockWith(MachineBasicBlock *Old,
     --I;
     // Removed because we could use LdAH to load address and that use a MBB as operand but
     // it is not a terminator.
-//    if (!I->isTerminator()) break;
+    if (!I->isTerminator()) break;
 
     // Scan the operands of this machine instruction, replacing any uses of Old
     // with New.
