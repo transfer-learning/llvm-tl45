@@ -32,4 +32,4 @@ def CC_TL45 : CallingConv<[
   CCIfVarArg<CCAssignToStack<4,4>>
 ]>;
 
-def CC_Save : CalleeSavedRegs<(add r10, r11, r12, r13, bp)>;
+def CC_Save : CalleeSavedRegs<(add r10, r11, r12, bp)>;
