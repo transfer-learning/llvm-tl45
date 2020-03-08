@@ -144,6 +144,8 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case TL45::CMP_JMP: {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
+    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(3).getReg())
+        .addReg(TL45::r0).add(MI.getOperand(4));
     resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, false);
     BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3)).add(MI.getOperand(4));
     break;
@@ -152,6 +154,8 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   case TL45::CMPI_JMP: {
     auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
+    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(3).getReg())
+        .addReg(TL45::r0).add(MI.getOperand(4));
     resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, true);
     BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(3)).add(MI.getOperand(4));
     break;
