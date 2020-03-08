@@ -24,10 +24,10 @@ def SDT_CallSeqEnd        : SDCallSeqEnd<[SDTCisVT<0, i32>,
 def SDT_Call        : SDTypeProfile<0, -1, [SDTCisVT<0, i32>]>;
 
 // [cc, lhs, rhs, base, dest]
-def SDT_TL45CmpJmp     : SDTypeProfile<0, 5, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>, SDTCisVT<3, i32>]>;
+def SDT_TL45CmpJmp     : SDTypeProfile<1, 4, [SDTCisVT<0, i32>, SDTCisVT<1, i32>, SDTCisVT<2, i32>, SDTCisVT<3, i32>]>;
 
 // [GRReg (base), jmp_target_l (offset)]
-def SDT_TL45BrOff : SDTypeProfile<0, 2, [SDTCisVT<0, i32>, SDTCisVT<1, OtherVT>]>;
+def SDT_TL45BrOff : SDTypeProfile<1, 1, [SDTCisVT<1, OtherVT>]>;
 
 // LdAH: load Addr High
 def SDT_TL45LdAH: SDTypeProfile<1, 1, [ SDTCisVT<1, OtherVT>]>;
@@ -201,7 +201,7 @@ let isBarrier = 1, isBranch = 1, isIndirectBranch = 1, isTerminator = 1 in
 
 def : Pat<(brind GRRegs:$target), (PseudoBRIND GRRegs:$target, 0)>;
 
-let isTerminator = 1 in
+let isTerminator = 1, isCodeGenOnly = 1 in
 def LdAH: InstTL45<(outs GRRegs:$dr), (ins jmp_target_h:$high),
     0x1, "ldah", "$dr, $high",
     [(set (i32 GRRegs:$dr), (tl45_ldah bb:$high))]> {
@@ -217,22 +217,21 @@ def LdAH: InstTL45<(outs GRRegs:$dr), (ins jmp_target_h:$high),
 
 
 let isBranch = 1, isTerminator = 1, isBarrier = 1 in
-    def BrOff : TL45PseudoInstr<(outs), (ins GRRegs:$base, jmp_target_l:$offset),
-       "br", "$base, $offset", [(tl45_broff GRRegs:$base, bb:$offset)]>;
-//       PseudoInstExpansion<(JMP GRRegs:$base, jmp_target_l:$offset)>;
+    def BrOff : TL45PseudoInstr<(outs GRRegs:$base), (ins jmp_target_l:$offset),
+       "broff", "$base, $offset", [(set GRRegs:$base, (br bb:$offset))]>;
 
 
 // CMP_JMP
-def CMP_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, GRRegs:$b, GRRegs:$base, b_target:$dst),
-                     [(tl45_cmp_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 GRRegs:$b), (i32 GRRegs:$base), bb:$dst)]> {
+def CMP_JMP : Pseudo<(outs GRRegs:$base), (ins cc_val:$cc, GRRegs:$a, GRRegs:$b, b_target:$dst),
+                     [(set GRRegs:$base, (tl45_cmp_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 GRRegs:$b), bb:$dst))]> {
   let hasSideEffects = 1;
   let isBranch = 1;
   let isTerminator = 1;
   let isCompare    = 1;
 }
 
-def CMPI_JMP : Pseudo<(outs), (ins cc_val:$cc, GRRegs:$a, TL45imm16:$b, GRRegs:$base, b_target:$dst),
-                     [(tl45_cmpi_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 TL45imm16:$b), (i32 GRRegs:$base), bb:$dst)]> {
+def CMPI_JMP : Pseudo<(outs GRRegs:$base), (ins cc_val:$cc, GRRegs:$a, TL45imm16:$b, b_target:$dst),
+                     [(set GRRegs:$base, (tl45_cmpi_jmp (i32 cc_val:$cc), (i32 GRRegs:$a), (i32 TL45imm16:$b), bb:$dst))]> {
   let hasSideEffects = 1;
   let isBranch = 1;
   let isTerminator = 1;
