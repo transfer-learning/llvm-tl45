@@ -312,6 +312,7 @@ let isReturn = 1, isBarrier = 1, isTerminator = 1 in {
 // TODO Long Call
 def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
 def : Pat<(tl45_call GRRegs:$base, texternalsym:$func), (CALL GRRegs:$base, texternalsym:$func)>;
+def : Pat<(tl45_call GRRegs:$func), (CALL GRRegs:$func, 0)>;
 // def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
 
 // ADJCALLSTACKDOWN/UP

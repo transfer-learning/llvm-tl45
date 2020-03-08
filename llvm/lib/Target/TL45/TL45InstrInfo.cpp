@@ -385,7 +385,6 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                   SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
-  return true;
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.
