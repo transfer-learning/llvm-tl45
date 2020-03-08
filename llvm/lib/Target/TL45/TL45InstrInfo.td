@@ -195,12 +195,14 @@ let Uses = [eflags], isBranch = 1, isTerminator = 1, isPredicable = 1 in {
 
 let isBranch = 1, isTerminator = 1, isBarrier = 1 in
   defm JMP : JTypeInstr<0xC, 0xF, "jmp">;
-let isBarrier = 1, isBranch = 1, isIndirectBranch = 1, isTerminator = 1 in
+/*let isBarrier = 1, isBranch = 1, isIndirectBranch = 1, isTerminator = 1 in
     def PseudoBRIND : Pseudo<(outs), (ins GRRegs:$base, TL45Uimm16:$imm), []>,
         PseudoInstExpansion<(JMP GRRegs:$base, TL45Uimm16:$imm)>;
+        */
 
-def : Pat<(brind GRRegs:$target), (PseudoBRIND GRRegs:$target, 0)>;
+//def : Pat<(brind GRRegs:$target), (PseudoBRIND GRRegs:$target, 0)>;
 
+let isBranch = 1, isTerminator = 0, isBarrier = 0 in
 def LdAH: TL45PseudoInstr<(outs GRRegs:$dr), (ins jmp_target_h:$high),
     "ldah", "$dr, $high",
     [(set (i32 GRRegs:$dr), (tl45_ldah bb:$high))]>;
@@ -298,12 +300,11 @@ let isReturn = 1, isBarrier = 1, isTerminator = 1 in {
 */
 
 // TODO Long Call
-// def : Pat<(tl45_call tglobaladdr:$func), (CALL ), tglobaladdr:$func)>;
-//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
 
-//def : Pat<(tl45_call texternalsym:$func), (CALL r0, texternalsym:$func)>;
+def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
+def : Pat<(tl45_call GRRegs:$base, texternalsym:$func), (CALL GRRegs:$base, texternalsym:$func)>;
 
-// def: Pat<(tl45_ldah tglobaladdr:$addr), (LdAH jmp_target_h:$addr)>;
+def : Pat<(tl45_call GRRegs:$base, texternalsym:$func), (CALL GRRegs:$base, texternalsym:$func)>;
 
 def : Pat<(tl45_call GRRegs:$base, tglobaladdr:$func), (CALL GRRegs:$base, tglobaladdr:$func)>;
 

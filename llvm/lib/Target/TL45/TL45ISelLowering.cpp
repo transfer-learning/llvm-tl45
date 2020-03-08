@@ -70,8 +70,8 @@ TL45TargetLowering::TL45TargetLowering(const TL45TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::Other, Custom);
   setOperationAction(ISD::BR_CC, MVT::i32, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
-//  setOperationAction(ISD::BRIND, MVT::Other, Expand);
-//  setOperationAction(ISD::BRIND, MVT::i32, Expand);
+  setOperationAction(ISD::BRIND, MVT::Other, Expand);
+  setOperationAction(ISD::BRIND, MVT::i32, Expand);
 
   setOperationAction(ISD::SELECT_CC, MVT::i32, Custom);
   setOperationAction(ISD::SELECT, MVT::i32, Custom);
@@ -872,10 +872,10 @@ SDValue TL45TargetLowering::lowerBr(SDValue Op, SelectionDAG &DAG) const {
 
 //  SDValue Jmp = DAG.getNode(TL45ISD::JMP, DL, MVT::Other, Chain, Dest);
 //  return Jmp;
-  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Glue), Chain, Dest);
+  SDValue base = DAG.getNode(TL45ISD::LD_AH, DL, DAG.getVTList(MVT::i32, MVT::Other, MVT::Glue), Chain, Dest);
 
-//  SDValue base = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Dest), 0);
-  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, Chain, base.getValue(0), Dest, base.getValue(1));
+//  SDValue base = SDValue(DAG.getMachineNode(TL45::LdAH, DL, MVT::i32, Chain, Dest), 0);
+  SDValue BrOff = DAG.getNode(TL45ISD::BR_OFF, DL, MVT::Other, base.getValue(1), base.getValue(0), Dest, base.getValue(2));
   return BrOff;
 }
 

@@ -129,14 +129,16 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   default:
     return false;
   case TL45::BrOff: {
+    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(0).getReg())
+        .addReg(TL45::r0).add(MI.getOperand(1));
     BuildMI(MBB, MI, DL, get(TL45::JMP))
         .add(MI.getOperand(0)) // Base
         .add(MI.getOperand(1)); // Offset
     break;
   }
   case TL45::LdAH: {
-    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(0).getReg())
-        .addReg(TL45::r0).add(MI.getOperand(1));
+//    BuildMI(MBB, MI, DL, get(TL45::ADDHI), MI.getOperand(0).getReg())
+//        .addReg(TL45::r0).add(MI.getOperand(1));
     break;
   }
   case TL45::CMP_JMP: {
@@ -390,6 +392,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
 /// before calling this function.
 bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
                                   SmallVectorImpl<MachineOperand> &Cond, bool AllowModify) const {
+  return true;
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
   // Skip all the debug instructions.
@@ -457,11 +460,14 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
       }
       return false;
     }
+    // TODO Fix Analyze CondBr
+    return true;
 
     // Conditional branch
     AnalyzeCondBr(LastInst, LastOpc, TBB, Cond, I);
     return false;
   }
+  return true;
 
   // If we reached here, there are two branches.
   // If there are three terminators, we don't know what sort of block this is.
