@@ -101,8 +101,8 @@ SDValue TL45TargetLowering::LowerOperation(SDValue Op,
   switch (Op.getOpcode()) {
   default:
     report_fatal_error("unimplemented operand");
-  case ISD::BR:
-    return lowerBr(Op, DAG);
+//  case ISD::BR:
+//    return lowerBr(Op, DAG);
   case ISD::BR_CC:
     return lowerBrCc(Op, DAG);
   case ISD::SELECT:

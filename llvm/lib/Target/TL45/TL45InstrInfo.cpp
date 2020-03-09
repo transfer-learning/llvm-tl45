@@ -34,15 +34,15 @@ void TL45InstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     llvm_unreachable("Can't store this register to stack slot");
 
   BuildMI(MBB, I, DL, get(Opcode))
-          .addReg(SrcReg)
-          .addFrameIndex(FI)
-          .addImm(0);
+      .addReg(SrcReg)
+      .addFrameIndex(FI)
+      .addImm(0);
 }
 
 void TL45InstrInfo::loadRegFromStackSlot(
-        MachineBasicBlock &MBB, MachineBasicBlock::iterator I, unsigned DstReg,
-        int FI, const TargetRegisterClass *RC,
-        const TargetRegisterInfo *TRI) const {
+    MachineBasicBlock &MBB, MachineBasicBlock::iterator I, unsigned DstReg,
+    int FI, const TargetRegisterClass *RC,
+    const TargetRegisterInfo *TRI) const {
   DebugLoc DL;
   if (I != MBB.end())
     DL = I->getDebugLoc();
@@ -129,27 +129,27 @@ bool TL45InstrInfo::expandPostRAPseudo(MachineInstr &MI) const {
   default:
     return false;
   case TL45::BrOff: {
-    BuildMI(MBB, MI, DL, get(TL45::LdAH), MI.getOperand(0).getReg()).add(MI.getOperand(1));
+    BuildMI(MBB, MI, DL, get(TL45::LdAH), TL45::r13).add(MI.getOperand(0));
     BuildMI(MBB, MI, DL, get(TL45::JMP))
-            .add(MI.getOperand(0)) // Base
-            .add(MI.getOperand(1)); // Offset
+        .addReg(TL45::r13) // Base
+        .add(MI.getOperand(0)); // Offset
     break;
   }
   case TL45::CMP_JMP: {
-    auto ConditionCode = ISD::CondCode(MI.getOperand(1).getImm());
+    auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
-    BuildMI(MBB, MI, DL, get(TL45::LdAH), MI.getOperand(0).getReg()).add(MI.getOperand(4));
-    resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(2), MI.getOperand(3), JmpOpcode, false);
-    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(0)).add(MI.getOperand(4));
+    BuildMI(MBB, MI, DL, get(TL45::LdAH), TL45::r13).add(MI.getOperand(3));
+    resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, false);
+    BuildMI(MBB, MI, DL, get(JmpOpcode)).addReg(TL45::r13).add(MI.getOperand(3));
     break;
   }
 
   case TL45::CMPI_JMP: {
-    auto ConditionCode = ISD::CondCode(MI.getOperand(1).getImm());
+    auto ConditionCode = ISD::CondCode(MI.getOperand(0).getImm());
     unsigned int JmpOpcode;
-    BuildMI(MBB, MI, DL, get(TL45::LdAH), MI.getOperand(0).getReg()).add(MI.getOperand(4));
-    resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(2), MI.getOperand(3), JmpOpcode, true);
-    BuildMI(MBB, MI, DL, get(JmpOpcode)).add(MI.getOperand(0)).add(MI.getOperand(4));
+    BuildMI(MBB, MI, DL, get(TL45::LdAH), TL45::r13).add(MI.getOperand(3));
+    resolveComparison(MBB, MI, DL, ConditionCode, MI.getOperand(1), MI.getOperand(2), JmpOpcode, true);
+    BuildMI(MBB, MI, DL, get(JmpOpcode)).addReg(TL45::r13).add(MI.getOperand(3));
     break;
   }
 
@@ -210,23 +210,24 @@ void TL45InstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                 unsigned DestReg, unsigned SrcReg,
                                 bool KillSrc) const {
   BuildMI(MBB, MI, DL, get(TL45::ADD))
-          .addReg(DestReg)
-          .addReg(SrcReg)
-          .addReg(TL45::r0);
+      .addReg(DestReg)
+      .addReg(SrcReg)
+      .addReg(TL45::r0);
 }
 
 static unsigned int BrOpcode[] = {
-        TL45::JO, TL45::JOI, TL45::JNO, TL45::JNOI, TL45::JS, TL45::JSI, TL45::JNS, TL45::JNSI,
-        TL45::JE, TL45::JEI, TL45::JNE, TL45::JNEI, TL45::JB, TL45::JBI, TL45::JNB, TL45::JNBI,
+    TL45::JO, TL45::JOI, TL45::JNO, TL45::JNOI, TL45::JS, TL45::JSI, TL45::JNS, TL45::JNSI,
+    TL45::JE, TL45::JEI, TL45::JNE, TL45::JNEI, TL45::JB, TL45::JBI, TL45::JNB, TL45::JNBI,
 
-        TL45::JBE, TL45::JBEI, TL45::JA, TL45::JAI, TL45::JL, TL45::JLI, TL45::JGE, TL45::JGEI,
-        TL45::JLE, TL45::JLEI, TL45::JG, TL45::JGI,
-        TL45::JMP,
-        TL45::JMPI,
+    TL45::JBE, TL45::JBEI, TL45::JA, TL45::JAI, TL45::JL, TL45::JLI, TL45::JGE, TL45::JGEI,
+    TL45::JLE, TL45::JLEI, TL45::JG, TL45::JGI,
+    TL45::JMP,
+    TL45::JMPI,
 
-//        TL45::BrOff,
+    TL45::BrOff,
+    TL45::LdAH,
 
-        0
+    0
 };
 
 static bool getAnalyzableBrOpc(unsigned Opc) {
@@ -246,6 +247,7 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
                           SmallVectorImpl<MachineOperand> &Cond,
                           MachineBasicBlock::reverse_iterator LastInstI) {
   assert(getAnalyzableBrOpc(Opc) && "Not an analyzable branch");
+  assert(Cond.size() == 0 && "Cond list is non-empty at start");
   unsigned NumOp = Inst->getNumExplicitOperands();
 
   // for both int and fp branches, the last explicit operand is the
@@ -261,11 +263,10 @@ static void AnalyzeCondBr(const MachineInstr *Inst, unsigned Opc,
       Cond.push_back(Inst->getOperand(i));
 
   } else {
-    assert(0 && "Not Supported");
 //  for (int i = 0; i < NumOp-1; i++)
 //    Cond.push_back(Inst->getOperand(i));
 
-    MachineInstr &LastInst = *LastInstI;
+    MachineInstr &LastInst = *(++LastInstI);
 
     assert((LastInst.getOpcode() == TL45::SUB_TERM || LastInst.getOpcode() == TL45::SUB_TERMI) && "unknown predicate");
 
@@ -331,6 +332,7 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
   SmallVector<MachineInstr *, 4> BranchInstrs;
 
   MachineInstr *LastInst = &*I;
+  assert(LastInst->getOpcode() != TL45::LdAH  && "Can't have LdAH terminate a block");
   unsigned LastOpc = LastInst->getOpcode();
   BranchInstrs.push_back(LastInst);
 
@@ -346,7 +348,7 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
   // Skip past any debug instruction to see if the second last actual
   // is a branch.
   ++I;
-  while (I != REnd && I->isDebugInstr())
+  while (I != REnd && (I->isDebugInstr() || I->getOpcode() == TL45::LdAH))
     ++I;
 
   if (I != REnd) {
@@ -354,8 +356,9 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
     SecondLastOpc = SecondLastInst->getOpcode();
 
     // Not an analyzable branch (must be an indirect jump). TODO: SUB_TERM
-    if (isUnpredicatedTerminator(*SecondLastInst) && !getAnalyzableBrOpc(SecondLastOpc))
+    if (isUnpredicatedTerminator(*SecondLastInst) && !getAnalyzableBrOpc(SecondLastOpc)) {
       return true;
+    }
   }
 
   // If there is only one terminator instruction, process it.
@@ -365,31 +368,35 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
       switch (LastInst->getOpcode()) {
       default:
         llvm_unreachable("Unexpected Unconditional Branch");
-        break;
       case TL45::JMPI: {
         report_fatal_error("Found a JMPI while analyzing branches", false);
-        TBB = LastInst->getOperand(0).getMBB();
-        break;
       }
       case TL45::JMP:
-        assert(0);
-      case TL45::BrOff:
         TBB = LastInst->getOperand(1).getMBB();
+        break;
+      case TL45::BrOff:
+        TBB = LastInst->getOperand(0).getMBB();
         break;
       }
       return false;
     }
-    return true;
     // Conditional branch
     AnalyzeCondBr(LastInst, LastOpc, TBB, Cond, I);
     return false;
   }
-  return true;
 
   // If we reached here, there are two branches.
   // If there are three terminators, we don't know what sort of block this is.
-  if (++I != REnd && isUnpredicatedTerminator(*I))
+  ++I;
+  while (I != REnd && (I->isDebugInstr() || I->getOpcode() == TL45::LdAH ||
+                       I->getOpcode() == TL45::SUB_TERM || I->getOpcode() == TL45::SUB_TERMI)) {
+
+    ++I;
+  }
+
+  if (I != REnd && isUnpredicatedTerminator(*I)) {
     return true;
+  }
 
   BranchInstrs.insert(BranchInstrs.begin(), SecondLastInst);
 
@@ -411,14 +418,12 @@ bool TL45InstrInfo::analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TB
   if (!LastInst->isUnconditionalBranch())
     return true;
 
-  AnalyzeCondBr(SecondLastInst, SecondLastOpc, TBB, Cond, I);
-  if (LastInst->getOpcode() == TL45::BrOff) {
-    FBB = LastInst->getOperand(1).getMBB();
-  } else {
-    // Other branch? (Assuming JMP)
-    assert(0);
-    assert (LastInst->getOpcode() == TL45::JMP && "Unconditional Jump with non JMP / BrOff");
+  AnalyzeCondBr(SecondLastInst, SecondLastOpc, TBB, Cond, SecondLastInst->getReverseIterator());
+  assert((LastOpc == TL45::JMP || LastOpc == TL45::BrOff) && "Unconditional Jump with non JMP / BrOff");
+  if (LastOpc == TL45::BrOff) {
     FBB = LastInst->getOperand(0).getMBB();
+  } else {
+    FBB = LastInst->getOperand(1).getMBB();
   }
 
   return false;
@@ -433,7 +438,7 @@ unsigned TL45InstrInfo::removeBranch(MachineBasicBlock &MBB,
 
   // Up to 2 branches are removed.
   // Note that indirect branches are not removed.
-  while (I != REnd && removed < 2) {
+  while (I != REnd) {
     // Skip past debug instructions.
     if (I->isDebugInstr()) {
       ++I;
@@ -441,22 +446,32 @@ unsigned TL45InstrInfo::removeBranch(MachineBasicBlock &MBB,
     }
     if (!getAnalyzableBrOpc(I->getOpcode()))
       break;
-    // Remove the branch.
-    if (I->getOpcode() == TL45::JMP) {
-      assert(0 && "Can't erase complicated instruction yet");
-      I->eraseFromParent();
-      I = MBB.rbegin();
-      ++removed;
-      if (I->getOpcode() == TL45::LdAH) {
-        I->eraseFromParent();
-        I = MBB.rbegin();
+
+    unsigned Op = I->getOpcode();
+    if (removed == 0) {
+      if (!I->isConditionalBranch() && !I->isUnconditionalBranch()) {
+        break;
       }
-    } else {
+    }
+    switch (Op) {
+    default:
+      if (removed == 1 && !I->isConditionalBranch()) {
+        goto done;
+      } else if (removed == 2) {
+        goto done;
+      }
+      ++removed;
+      LLVM_FALLTHROUGH;
+    case TL45::LdAH:
+    case TL45::SUB_TERM:
+    case TL45::SUB_TERMI:
       I->eraseFromParent();
       I = MBB.rbegin();
-      ++removed;
+      break;
     }
   }
+done:
+  assert(removed <= 2);
   return removed;
 }
 
@@ -475,27 +490,16 @@ unsigned TL45InstrInfo::removeBranch(MachineBasicBlock &MBB,
 /// The CFG information in MBB.Predecessors and MBB.Successors must be valid
 /// before calling this function.
 unsigned TL45InstrInfo::insertBranch(
-        MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
-        ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
+    MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
+    ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
   if (BytesAdded)
     *BytesAdded = 0;
-
-  MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
 
   if (Cond.empty()) {
     // Unconditional Branch, so we build a LdAH and JMP
     assert(!FBB && "Unconditional branch with multiple successors!");
-    RegScavenger scavenger;
-    unsigned ScratchReg = MRI.createVirtualRegister(&TL45::GRRegsRegClass);
-    // LdAH
-    auto FirstMI = BuildMI(&MBB, DL, get(TL45::LdAH), ScratchReg).addMBB(TBB);
-    // JMP
-    BuildMI(&MBB, DL, get(TL45::JMP)).addReg(ScratchReg, RegState::Kill).addMBB(TBB);
-    scavenger.enterBasicBlockEnd(MBB);
-    auto SubReg = scavenger.scavengeRegisterBackwards(TL45::GRRegsRegClass, FirstMI->getIterator(), false, 0);
-    MRI.replaceRegWith(ScratchReg, SubReg);
-    MRI.clearVirtRegs();
-
+    BuildMI(&MBB, DL, get(TL45::LdAH), TL45::r13).addMBB(TBB); // LdAH
+    BuildMI(&MBB, DL, get(TL45::JMP)).addReg(TL45::r13).addMBB(TBB); // JMP
     if (BytesAdded)
       *BytesAdded += 8;
     return 2;
@@ -503,46 +507,26 @@ unsigned TL45InstrInfo::insertBranch(
 
   unsigned Count = 0;
 
-  report_fatal_error("Can't insert conditional branch yet");
   unsigned JmpOpc = Cond[0].getImm();
   if (JmpOpc == TL45::CMP_JMP || JmpOpc == TL45::CMPI_JMP) {
-    assert(Cond[1].isReg() && Cond[1].isDef() && "CMP(I)_JMP should have the first operand as a def");
-
-    BuildMI(MBB, MBB.end(), DL, get(JmpOpc)).addReg(Cond[1].getReg(), RegState::Dead | RegState::Define).add(
-            Cond.slice(2, 3)).addMBB(TBB);
+    BuildMI(MBB, MBB.end(), DL, get(JmpOpc)).add(Cond.slice(1, 3)).addMBB(TBB);
     Count++;
 
   } else {
-    assert(0 && "DIE");
-    // condition
-    BuildMI(MBB, MBB.end(), DL, get(Cond[1].getImm()), TL45::r0).add(Cond[2]).add(Cond[3]);
-    Count++;
-
-    // True branch instruction
-    BuildMI(MBB, MBB.end(), DL, get(Cond[0].getImm())).addMBB(TBB);
-    Count++;
+    // Cond: [J(XX), SUB_TERM(I), LHS, RHS]
+    assert(Cond[1].getImm() == TL45::SUB_TERM || Cond[1].getImm() == TL45::SUB_TERMI && "Conditional Jump not comparing");
+    BuildMI(MBB, MBB.end(), DL, get(TL45::LdAH), TL45::r13).addMBB(TBB); // LdAH
+    BuildMI(MBB, MBB.end(), DL, get(Cond[1].getImm()), TL45::r0).add(Cond[2]).add(Cond[3]); // SUBTERM
+    BuildMI(MBB, MBB.end(), DL, get(Cond[0].getImm())).addReg(TL45::r13).addMBB(TBB); // J(XX)
+    Count+=3;
   }
 
   if (FBB) {
     // Two-way Conditional branch. Insert the second branch.
 
-    auto reg = Cond[Cond.size() - 1];
-    assert(reg.isReg() && reg.isDef() && "If FBB exists, Cond last should be a reg");
-    BuildMI(MBB, MBB.end(), DL, get(TL45::BrOff))
-            .addReg(reg.getReg(), RegState::Define | RegState::Dead).addMBB(FBB);
-
-//    unsigned ScratchReg = MRI.createVirtualRegister(&TL45::GRRegsRegClass);
-//    auto FirstMI = BuildMI(MBB, MBB.end(), DL, get(TL45::LdAH), ScratchReg).addMBB(FBB);
-//    BuildMI(MBB, MBB.end(), DL, get(TL45::JMP)).addReg(ScratchReg).addMBB(FBB);
-//    RegScavenger scavenger;
-//    scavenger.enterBasicBlockEnd(MBB);
-//    auto SubReg = scavenger.scavengeRegisterBackwards(TL45::GRRegsRegClass, FirstMI->getIterator(), false, 0);
-//    MRI.replaceRegWith(ScratchReg, SubReg);
-//    Count+=2;
-
-//    BuildMI(MBB, MBB.end(), DL, get(TL45::JMPI)).addMBB(FBB);
-//    Count++;
-
+    BuildMI(MBB, MBB.end(), DL, get(TL45::LdAH), TL45::r13).addMBB(FBB);
+    BuildMI(MBB, MBB.end(), DL, get(TL45::JMP)).addReg(TL45::r13).addMBB(FBB);
+    Count+=2;
   }
 
   if (BytesAdded)
